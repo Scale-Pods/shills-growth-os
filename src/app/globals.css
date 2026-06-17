@@ -162,6 +162,7 @@ body {
   display: flex;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
   position: relative;
   z-index: 1;
 }
@@ -463,6 +464,8 @@ body {
 /* Header bar */
 .app-header {
   height: 64px;
+  min-height: 64px;
+  flex-shrink: 0;
   padding: 0 24px;
   border-bottom: 1px solid var(--separator);
   display: flex;
@@ -2978,6 +2981,9 @@ body {
   display: none;
   opacity: 0;
   transition: opacity 150ms ease;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
 }
 
 .sidebar:hover .logo-orb-collapsed {
@@ -2999,12 +3005,14 @@ body {
   flex-direction: column;
   align-items: center;
   width: 100vw;
+  height: 100vh;
   min-height: 100vh;
   position: relative;
   background: #0A0A0C; /* Obsidian Black */
   color: #FFFFFF;
   z-index: 1000;
   font-family: -apple-system, "Plus Jakarta Sans", BlinkMacSystemFont, system-ui, sans-serif;
+  overflow-y: auto;
 }
 
 .landing-glow-1 {
@@ -3171,10 +3179,16 @@ body {
   justify-content: space-between;
   width: 100%;
   max-width: 1200px;
-  padding: 24px 40px;
-  position: absolute;
+  padding: 16px 40px;
+  position: fixed;
   top: 0;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 1002;
+  background: rgba(10, 10, 12, 0.7);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .landing-nav-logo {
@@ -3187,6 +3201,7 @@ body {
   height: 28px;
   width: auto;
   filter: brightness(1.2);
+  mix-blend-mode: screen;
 }
 
 .landing-nav-logo-txt {
@@ -3509,13 +3524,56 @@ body {
   font-size: 13px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.7);
-  transition: all 200ms ease;
+  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  outline: none;
 }
 
 .integration-chip:hover {
-  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-2px);
   color: #FFFFFF;
-  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.integration-chip.shopify:hover {
+  background: rgba(150, 191, 72, 0.12);
+  border-color: #96BF48;
+  color: #96BF48;
+  box-shadow: 0 4px 20px rgba(150, 191, 72, 0.25);
+}
+
+.integration-chip.amazon:hover {
+  background: rgba(255, 153, 0, 0.12);
+  border-color: #FF9900;
+  color: #FF9900;
+  box-shadow: 0 4px 20px rgba(255, 153, 0, 0.25);
+}
+
+.integration-chip.blinkit:hover {
+  background: rgba(250, 214, 5, 0.12);
+  border-color: #FAD605;
+  color: #FAD605;
+  box-shadow: 0 4px 20px rgba(250, 214, 5, 0.25);
+}
+
+.integration-chip.instamart:hover {
+  background: rgba(255, 126, 0, 0.12);
+  border-color: #FF7E00;
+  color: #FF7E00;
+  box-shadow: 0 4px 20px rgba(255, 126, 0, 0.25);
+}
+
+.integration-chip.myntra:hover {
+  background: rgba(255, 63, 108, 0.12);
+  border-color: #FF3F6C;
+  color: #FF3F6C;
+  box-shadow: 0 4px 20px rgba(255, 63, 108, 0.25);
+}
+
+.integration-chip.flipkart:hover {
+  background: rgba(40, 116, 240, 0.12);
+  border-color: #2874F0;
+  color: #2874F0;
+  box-shadow: 0 4px 20px rgba(40, 116, 240, 0.25);
 }
 
 /* Features Grid */
@@ -3655,6 +3713,7 @@ body {
 .auth-logo-img {
   height: 40px;
   width: auto;
+  mix-blend-mode: screen;
 }
 
 .auth-tabs {
@@ -3712,5 +3771,340 @@ body {
   .hero-preview-container {
     width: 100%;
     max-width: 100%;
+  }
+}
+
+/* ==========================================================================
+   Header Toggle Button (Hamburger)
+   ========================================================================== */
+.menu-toggle-btn {
+  display: none;
+}
+
+/* ==========================================================================
+   Mobile Sidebar Overlay Backdrop
+   ========================================================================== */
+.mobile-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  z-index: 998;
+  animation: overlayFadeIn 250ms ease;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ==========================================================================
+   Comprehensive Device Responsiveness (Mobile/Tablet Viewports)
+   ========================================================================== */
+@media (max-width: 1024px) {
+  .main-workspace {
+    padding-left: 0 !important;
+  }
+  
+  .sidebar {
+    position: fixed !important;
+    left: -300px !important;
+    width: 260px !important;
+    height: calc(100vh - 32px) !important;
+    z-index: 1000 !important;
+    transition: left 320ms cubic-bezier(0.34, 1.56, 0.64, 1), background 300ms ease;
+  }
+  
+  .sidebar.mobile-open {
+    left: 16px !important;
+  }
+  
+  /* Force sidebar element opacity when mobile sidebar is open */
+  .sidebar.mobile-open .brand-details,
+  .sidebar.mobile-open .brand-version,
+  .sidebar.mobile-open .nav-item span,
+  .sidebar.mobile-open .nav-section-label,
+  .sidebar.mobile-open .user-details,
+  .sidebar.mobile-open #logout-btn,
+  .sidebar.mobile-open .theme-switcher,
+  .sidebar.mobile-open .scalepods-footer,
+  .sidebar.mobile-open .count-badge {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  
+  .sidebar.mobile-open .logo-orb-collapsed {
+    display: none !important;
+    opacity: 0 !important;
+  }
+  
+  .sidebar.mobile-open .brand-logo-expanded {
+    display: flex !important;
+    opacity: 1 !important;
+  }
+  
+  .menu-toggle-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: none;
+    background: var(--fill-quaternary);
+    color: var(--label-primary);
+    cursor: pointer;
+    margin-right: 12px;
+    transition: background 150ms ease;
+  }
+  
+  .menu-toggle-btn:hover {
+    background: var(--fill-tertiary);
+  }
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0 16px;
+  }
+  
+  .content-body {
+    padding: 16px;
+  }
+  
+  .breadcrumb-parent,
+  .breadcrumb-separator {
+    display: none !important;
+  }
+  
+  .header-center {
+    max-width: 200px;
+  }
+  
+  .search-spotlight-trigger span {
+    display: none;
+  }
+  
+  .search-spotlight-trigger {
+    padding: 8px;
+    border-radius: 50%;
+  }
+  
+  .badge-live {
+    display: none !important;
+  }
+  
+  .system-status-indicator {
+    display: none !important;
+  }
+  
+  /* Form filters alignment on smaller views */
+  .table-header-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .search-box-wrapper {
+    max-width: 100%;
+  }
+  
+  .filters-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .filters-row select,
+  .filters-row button {
+    flex-grow: 1;
+    width: 100%;
+  }
+  
+  /* Slide-out Inspector Panel width override */
+  .inspector-panel {
+    width: 100vw !important;
+    right: -100vw !important;
+  }
+  
+  .inspector-panel.open {
+    right: 0 !important;
+  }
+  
+  /* Content Studio Layouts */
+  .kanban-board {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Dashboard Channels List Layout */
+  .channel-row-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+  }
+  
+  .channel-info {
+    width: 100% !important;
+  }
+  
+  .channel-progress-wrapper {
+    width: 100% !important;
+  }
+  
+  .channel-metrics {
+    width: 100% !important;
+    flex-direction: row;
+    align-items: center !important;
+    justify-content: space-between;
+    margin-top: 4px;
+    border-top: 1px solid var(--separator);
+    padding-top: 8px;
+  }
+  
+  /* Spotlight search width override */
+  .spotlight-panel {
+    width: 92vw !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Header adjustments for extra small screens */
+  .app-header {
+    height: 60px;
+    padding: 0 12px;
+  }
+  
+  .date-selector-wrapper {
+    padding: 4px 6px;
+  }
+  
+  .header-select {
+    font-size: 12px;
+  }
+  
+  /* Sales Widgets Grid stacking */
+  .sales-widgets-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+  
+  /* Marketplace quick footer button stack */
+  .market-card-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .market-card-footer button {
+    width: 100%;
+  }
+  
+  /* Customer Profile segments grid */
+  .profile-ltv-row {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* WhatsApp campaign stats alignment */
+  .campaign-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  
+  .camp-stats-summary {
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid var(--separator);
+    padding-top: 10px;
+  }
+  
+  /* AI Support Header & Chat Footer */
+  .chat-header-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .chat-actions {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+  
+  .chat-actions button {
+    flex: 1;
+  }
+  
+  .chat-footer-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .chat-footer-controls button {
+    width: 100%;
+  }
+  
+  /* Reviews rating alignments */
+  .rev-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .rev-cust-block {
+    flex-wrap: wrap;
+  }
+  
+  /* Procurement leadtimes cards stacking */
+  .supplier-po-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .supplier-po-item .sup-action {
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid var(--separator);
+    padding-top: 8px;
+  }
+  
+  /* Settings page items */
+  .int-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .int-status {
+    width: 100%;
+    justify-content: space-between;
+    border-top: 1px solid var(--separator);
+    padding-top: 8px;
+  }
+  
+  /* Founder console input wrapper */
+  .cc-input-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .cc-input-footer button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  /* Auth cards adjustments */
+  .auth-modal,
+  .landing-card {
+    padding: 28px 16px !important;
+    width: 94vw !important;
+    border-radius: 20px !important;
   }
 }
