@@ -2539,10 +2539,7 @@ This ultra-luxurious lip styling product blends botanical oils with pure color p
               <span className="landing-nav-logo-txt">Growth OS</span>
             </div>
             
-            <nav className="landing-nav-links">
-              <a href="#features" className="nav-link">Features</a>
-              <a href="#integrations" className="nav-link">Integrations</a>
-            </nav>
+            
             
             <div className="landing-nav-actions">
               <button className="btn-nav-signup" onClick={() => { setAuthMode('signin'); setAuthModalOpen(true); }}>Sign In</button>
