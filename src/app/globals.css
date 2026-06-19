@@ -206,10 +206,13 @@ body {
 }
 
 .sidebar-header {
-  padding: 24px 16px 16px;
+  padding: 18px 14px;
   border-bottom: 1px solid var(--separator);
   display: flex;
   align-items: center;
+  justify-content: center;
+  min-height: 84px;
+  overflow: hidden;
 }
 
 .brand-logo {
@@ -598,7 +601,20 @@ body {
   font-weight: 500;
   color: var(--label-primary);
   outline: none;
-  cursor: default;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 4px;
+}
+
+[data-theme="dark"] .header-select {
+  color: var(--label-primary);
+  color-scheme: dark;
+}
+
+[data-theme="dark"] .header-select option {
+  background: #2C2C2E;
+  color: var(--label-primary);
 }
 
 .header-btn {
@@ -2972,28 +2988,44 @@ body {
   background: var(--blue) !important;
 }
 
-.sidebar .logo-orb-collapsed {
-  display: block;
+/* ── Sidebar logo collapsed/expanded states ── */
+.sidebar-logo-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   opacity: 1;
   transition: opacity 150ms ease;
-}
-.sidebar .brand-logo-expanded {
-  display: none;
-  opacity: 0;
-  transition: opacity 150ms ease;
-  width: 100%;
-  justify-content: center;
-  align-items: center;
 }
 
-.sidebar:hover .logo-orb-collapsed {
-  display: none !important;
+.sidebar-logo-expanded {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+  width: 0;
+  overflow: hidden;
+}
+
+.sidebar:hover .sidebar-logo-collapsed {
+  display: none;
   opacity: 0;
 }
-.sidebar:hover .brand-logo-expanded {
-  display: flex !important;
+
+.sidebar:hover .sidebar-logo-expanded {
+  display: flex;
   opacity: 1;
+  pointer-events: auto;
+  width: auto;
+  overflow: visible;
+  transition-delay: 80ms;
 }
+
+/* Also hide brand-details (old class) if still present */
+.sidebar .brand-details { opacity: 0; pointer-events: none; transition: opacity 150ms ease; }
+.sidebar:hover .brand-details { opacity: 1; pointer-events: auto; transition-delay: 120ms; }
 
 
 
@@ -3837,12 +3869,12 @@ body {
     pointer-events: auto !important;
   }
   
-  .sidebar.mobile-open .logo-orb-collapsed {
+  .sidebar.mobile-open .sidebar-logo-collapsed {
     display: none !important;
     opacity: 0 !important;
   }
-  
-  .sidebar.mobile-open .brand-logo-expanded {
+
+  .sidebar.mobile-open .sidebar-logo-expanded {
     display: flex !important;
     opacity: 1 !important;
   }
@@ -4107,4 +4139,506 @@ body {
     width: 94vw !important;
     border-radius: 20px !important;
   }
+}
+
+/* ============================================================
+   COMPREHENSIVE RESPONSIVE SYSTEM
+   Breakpoints: 1024px (tablet), 768px (large mobile), 480px (small mobile)
+   ============================================================ */
+
+/* ---- Tablet (≤1024px) ---- */
+@media (max-width: 1024px) {
+  /* Header adjustments */
+  .page-header {
+    padding: 14px 20px;
+    gap: 10px;
+  }
+
+  .header-search {
+    max-width: 200px;
+  }
+
+  /* Metrics grid: 2-col on tablet */
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Generic 4-col → 2-col */
+  .grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Generic 3-col → 2-col */
+  .grid-3 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Kanban columns: horizontal scroll */
+  .kanban-board {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 12px;
+  }
+
+  /* Tables: allow horizontal scroll */
+  .table-wrapper,
+  .data-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Page content padding */
+  .page-content,
+  .dashboard-content,
+  .module-content {
+    padding: 20px 16px;
+  }
+
+  /* Inventory/content filter rows */
+  .filter-row,
+  .toolbar-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* ABC analysis chart placeholder */
+  .abc-chart-area {
+    min-height: 220px;
+  }
+}
+
+/* ---- Large mobile / small tablet (≤768px) ---- */
+@media (max-width: 768px) {
+  /* Header */
+  .page-header {
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .header-left {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .header-right {
+    flex: 1 1 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .header-search {
+    flex: 1 1 auto;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .page-title {
+    font-size: 18px !important;
+  }
+
+  .page-subtitle {
+    display: none;
+  }
+
+  /* Breadcrumb: hide on small screens */
+  .breadcrumb {
+    display: none;
+  }
+
+  /* Metrics: single column */
+  .metrics-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* All multi-column grids → single column */
+  .grid-4,
+  .grid-3,
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Liquid cards full-width */
+  .liquid-card {
+    border-radius: 14px;
+  }
+
+  /* Page body padding */
+  .page-content,
+  .dashboard-content,
+  .module-content {
+    padding: 14px 12px;
+    gap: 14px;
+  }
+
+  /* Tab bars: scroll horizontally */
+  .tab-bar,
+  .tabs-row,
+  .module-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    scrollbar-width: none;
+    gap: 4px;
+    padding-bottom: 2px;
+  }
+
+  .tab-bar::-webkit-scrollbar,
+  .tabs-row::-webkit-scrollbar,
+  .module-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-btn,
+  .tab-item {
+    flex-shrink: 0;
+    font-size: 13px;
+    padding: 7px 12px;
+  }
+
+  /* Tables: full horizontal scroll */
+  table {
+    min-width: 600px;
+  }
+
+  .table-wrapper,
+  .data-table-wrap,
+  .tbl-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+  }
+
+  /* Toolbar/filter rows: wrap + full width inputs */
+  .filter-row,
+  .toolbar-row,
+  .action-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .filter-row input,
+  .filter-row select,
+  .toolbar-row input,
+  .toolbar-row select {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 120px;
+  }
+
+  /* Modal overlays: near full-screen */
+  .modal-overlay .modal-box,
+  .modal-overlay .modal-content,
+  .dialog-box {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 88dvh !important;
+    overflow-y: auto;
+    border-radius: 18px !important;
+  }
+
+  /* Kanban: horizontal scroll, min card width */
+  .kanban-board {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 12px;
+    padding-bottom: 12px;
+  }
+
+  .kanban-col {
+    min-width: 260px;
+    flex-shrink: 0;
+  }
+
+  /* Customer care: WhatsApp phone mockup */
+  .phone-mockup {
+    width: 100% !important;
+    max-width: 340px;
+    margin: 0 auto;
+  }
+
+  /* Inventory channel grid */
+  .channel-grid,
+  .inv-channel-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* ABC cards */
+  .abc-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* SLA dashboard */
+  .sla-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Marketing analytics charts area */
+  .analytics-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Order lifecycle timeline: narrow */
+  .timeline-item {
+    padding-left: 40px;
+  }
+
+  .timeline-icon {
+    left: 0;
+    width: 28px;
+    height: 28px;
+  }
+
+  /* Stat rows inside cards */
+  .stat-row,
+  .kpi-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .stat-row > *,
+  .kpi-row > * {
+    flex: 1 1 calc(50% - 5px);
+  }
+
+  /* Header date select */
+  .header-select {
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+
+  /* Bundle kit cards */
+  .bundle-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Content draft detail panel: full width */
+  .draft-detail-panel {
+    width: 100% !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 70dvh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0 !important;
+    z-index: 300;
+  }
+
+  /* Two-column split layouts (e.g., inbox + detail) */
+  .split-layout {
+    flex-direction: column !important;
+  }
+
+  .split-left,
+  .split-right {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Carrier tracking cards */
+  .carrier-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Review engine: rating row */
+  .rating-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Founder console / inbox case list */
+  .console-body {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px;
+  }
+
+  .console-sidebar {
+    width: 100% !important;
+    max-height: 200px;
+    overflow-y: auto;
+    border-right: none !important;
+    border-bottom: 1px solid var(--separator);
+  }
+
+  /* Settings: integration grid */
+  .integration-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Procurement: PO table actions */
+  .po-action-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+/* ---- Landing / auth page responsive ---- */
+@media (max-width: 900px) {
+  .landing-hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .landing-hero-grid {
+    padding: 0 8px;
+  }
+
+  /* Auth modal phone mockup inside landing */
+  .landing-phone-mockup {
+    display: none;
+  }
+}
+
+/* ---- Module-specific grid overrides at ≤768px ---- */
+@media (max-width: 768px) {
+  /* Inventory SKU layout: drop side panel below table */
+  .inv-sku-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Maker-checker kanban + detail panel: stack vertically */
+  .maker-checker-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Kanban board inside maker-checker: force horizontal scroll */
+  .maker-checker-layout > div:first-child {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Channel grid in inventory: 2-col */
+  .channel-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ---- Small mobile (≤480px) ---- */
+@media (max-width: 480px) {
+  /* Page content padding */
+  .content-body {
+    padding: 10px 8px;
+  }
+
+  /* Header: stack title and controls */
+  .page-header {
+    padding: 10px 10px;
+  }
+
+  .page-title {
+    font-size: 16px !important;
+  }
+
+  /* Metrics: stay single col, reduce padding */
+  .metric-card,
+  .kpi-card {
+    padding: 14px !important;
+  }
+
+  .metric-value {
+    font-size: 22px !important;
+  }
+
+  /* Cards general padding */
+  .liquid-card {
+    padding: 14px !important;
+    border-radius: 12px;
+  }
+
+  /* Page body */
+  .page-content,
+  .dashboard-content,
+  .module-content {
+    padding: 10px 8px;
+    gap: 10px;
+  }
+
+  /* Tabs: smaller text */
+  .tab-btn,
+  .tab-item {
+    font-size: 11.5px;
+    padding: 6px 10px;
+  }
+
+  /* Filter row: each filter full width */
+  .filter-row input,
+  .filter-row select,
+  .toolbar-row input,
+  .toolbar-row select {
+    flex: 1 1 100%;
+  }
+
+  /* Stat rows: single col */
+  .stat-row > *,
+  .kpi-row > * {
+    flex: 1 1 100%;
+  }
+
+  /* Channel grid: single col */
+  .channel-grid,
+  .inv-channel-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Modals: full-screen on tiny screens */
+  .modal-overlay .modal-box,
+  .modal-overlay .modal-content,
+  .dialog-box {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: 92dvh !important;
+    border-radius: 16px 16px 0 0 !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0 !important;
+  }
+
+  /* Kanban column min width */
+  .kanban-col {
+    min-width: 230px;
+  }
+
+  /* Buttons: larger tap targets */
+  .btn,
+  button.primary,
+  button.secondary {
+    min-height: 40px;
+    font-size: 13px;
+  }
+
+  /* Timeline: tighter */
+  .timeline-item {
+    padding-left: 32px;
+    padding-bottom: 16px;
+  }
+
+  /* Draft detail panel: taller on tiny screens */
+  .draft-detail-panel {
+    max-height: 80dvh;
+  }
+
+  /* Table: even more compact */
+  table th,
+  table td {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  /* Header controls: icon-only mode */
+  .header-btn-label {
+    display: none;
+  }
+
+  /* Sidebar nav labels: always hidden on tiny screens even if hovered,
+     labels are already inside the hover-show elements so this is fine */
 }

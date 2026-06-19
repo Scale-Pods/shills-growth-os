@@ -242,7 +242,7 @@ export default function SalonSalesPage() {
       </div>
 
       {/* B2B CRM pipeline & outreach console */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>
+      <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>
         
         {/* B2B CRM Table */}
         <div className="liquid-card" style={{ padding: '24px' }}>

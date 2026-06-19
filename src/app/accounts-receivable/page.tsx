@@ -181,7 +181,7 @@ export default function AccountsReceivablePage() {
           </div>
 
           {/* Legend Details */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', flexWrap: 'wrap' }}>
+          <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', flexWrap: 'wrap' }}>
             {ageingBuckets.map((bucket, idx) => (
               <div key={idx} style={{ background: 'var(--fill-quaternary)', padding: '12px', borderRadius: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -201,7 +201,7 @@ export default function AccountsReceivablePage() {
       <div className="liquid-card mb-24" style={{ padding: '24px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px' }}>21-Day AI Recovery Workflow Automation</h3>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', flexWrap: 'wrap' }}>
+        <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', flexWrap: 'wrap' }}>
           {workflowTimeline.map((step, idx) => (
             <div key={idx} style={{ background: 'var(--fill-quaternary)', padding: '16px', borderRadius: '12px', position: 'relative', borderTop: `4px solid ${idx === 4 ? 'var(--red)' : idx === 3 ? 'var(--orange)' : 'var(--blue)'}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>

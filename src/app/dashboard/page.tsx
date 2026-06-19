@@ -250,7 +250,7 @@ export default function DashboardPage() {
                 Go to Content OS →
               </Link>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
+            <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
               <div style={{ background: 'var(--fill-quaternary)', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
                 <span style={{ fontSize: '11px', color: 'var(--label-secondary)', textTransform: 'uppercase', fontWeight: '600' }}>Reach This Month</span>
                 <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--blue)', marginTop: '4px' }}>{totalMarketingReach}</div>

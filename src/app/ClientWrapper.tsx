@@ -472,12 +472,16 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                   borderBottom: '1px solid var(--separator)',
                 }}
               >
-                <div className="brand-logo" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <img src="/icon.png" alt="Shills OS Logo" style={{ width: '60px', height: '60px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }} />
-                  <div className="brand-details">
-                    <span className="brand-name" style={{ fontWeight: '800', fontSize: '18px', color: '#fff', lineHeight: '1.2' }}>Shills OS</span>
-                    <span className="brand-version" style={{ display: 'block', fontSize: '11px', color: 'var(--label-tertiary)' }}>v1.2 Enterprise</span>
-                    <span style={{ display: 'block', fontSize: '9px', color: 'var(--blue)', fontWeight: '700', marginTop: '2px' }}>Powered by ScalePods</span>
+                {/* Collapsed state: just the logo icon */}
+                <div className="sidebar-logo-collapsed">
+                  <img src="/icon.png" alt="Shills OS" style={{ width: '40px', height: '40px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 4px 12px rgba(0,0,0,0.25)', display: 'block' }} />
+                </div>
+                {/* Expanded state: logo + brand name + tagline */}
+                <div className="sidebar-logo-expanded">
+                  <img src="/icon.png" alt="Shills OS Logo" style={{ width: '48px', height: '48px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 4px 14px rgba(0,0,0,0.25)', flexShrink: 0 }} />
+                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                    <span style={{ fontWeight: '800', fontSize: '17px', color: '#fff', letterSpacing: '-0.02em' }}>Shills OS</span>
+                    <span style={{ fontSize: '9.5px', color: 'var(--blue)', fontWeight: '700', marginTop: '3px', letterSpacing: '0.02em' }}>Powered by ScalePods</span>
                   </div>
                 </div>
               </div>
@@ -716,7 +720,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
             {/* Split Grid Body */}
             <main style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '60px 24px', position: 'relative', zIndex: 1, flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '60px' }}>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '60px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div className="landing-hero-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '60px', alignItems: 'center', flexWrap: 'wrap' }}>
                 
                 {/* Left Side Info Column */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -867,7 +871,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                   <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', marginTop: '6px' }}>Enterprise Sub-systems & Core Engines</h2>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
                   {/* Module 1 */}
                   <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ background: 'rgba(0, 122, 255, 0.1)', color: 'var(--blue)', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={18} /></div>
