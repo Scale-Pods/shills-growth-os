@@ -374,10 +374,10 @@ export default function SalonSalesPage() {
             {/* Template Box */}
             <div style={{ background: 'var(--fill-secondary)', padding: '12px', borderRadius: '8px', fontSize: '11.5px' }}>
               <span style={{ fontWeight: '700', color: 'var(--label-secondary)', textTransform: 'uppercase', fontSize: '9px' }}>AI Template Draft</span>
-              <p style={{ marginTop: '4px', color: 'var(--label-primary)', lineHeight: '1.4' }}>
-                {outreachChannel === 'whatsapp' && `Hi ${activeLead.name.split(' ')[0]}, this is Shills B2B Onboarding. We saw your Google Maps listing. We'd love to dispatch a free tester pack of Shills Gel Set #12 for your nail artists. Pls verify details.`}
-                {outreachChannel === 'email' && `Subject: Salon Wholesale Catalog & Starter Kit Proposal - Shills Professional\n\nDear Buying Manager,\nWe would love to establish a wholesale relationship with ${activeLead.name}...`}
-                {outreachChannel === 'voice' && `[Outgoing Voice Dialer Protocol]\nSpeech text: "Hello, calling from Shills B2B division regarding wholesale pricing quotes for ${activeLead.name}..."`}
+              <p style={{ marginTop: '4px', color: 'var(--label-primary)', lineHeight: '1.6', whiteSpace: 'pre-line' }}>
+                {outreachChannel === 'whatsapp' && `Hi, I'm reaching out from Shills Professional on behalf of our B2B Onboarding team.\n\nWe came across ${activeLead.name} and would love to dispatch a free tester pack of Shills Nail Gel Set #12 for your nail artists to trial — no commitment.\n\nCould we schedule a quick 10-min call? 🙏`}
+                {outreachChannel === 'email' && `Subject: Salon Wholesale Catalog & Starter Kit Proposal — Shills Professional\n\nDear Buying Manager at ${activeLead.name},\n\nWe'd love to establish a wholesale partnership with your studio. Shills Professional offers salon-grade nail gel, skincare, and color products with 30-day credit terms and free sample kits.\n\nPlease find our catalog attached. Happy to schedule a call at your convenience.\n\nWarm regards,\nShills B2B Team`}
+                {outreachChannel === 'voice' && `[Outgoing Voice Dialer — AI Agent]\n\nScript: "Hello, I'm calling from Shills Professional's B2B division. I'm reaching out to ${activeLead.name} regarding our wholesale nail gel and skincare range. We'd love to send you a complimentary tester kit. Is the buying manager available for a quick chat?"`}
               </p>
             </div>
 

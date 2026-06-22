@@ -318,8 +318,8 @@ export default function InventoryPage() {
               </div>
               <select className="input" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ fontSize: '12px', padding: '7px 8px' }}>
                 <option value="all">All Status</option>
-                <option value="critical">Critical (&le;10 days)</option>
-                <option value="low">Low Stock (11-25 days)</option>
+                <option value="critical">Critical (≤10 days)</option>
+                <option value="low">Low Stock (11–25 days)</option>
                 <option value="out">Out of Stock</option>
                 <option value="dead">Dead Stock</option>
                 <option value="over">Overstock (&gt;90 days)</option>

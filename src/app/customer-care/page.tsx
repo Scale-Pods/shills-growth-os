@@ -418,7 +418,7 @@ export default function CustomerCarePage() {
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
               <input type="text" className="input" placeholder="Order ID (e.g. SH-9840)" value={activeOrderId} onChange={e => setActiveOrderId(e.target.value)} style={{ fontSize: '12px', padding: '6px 10px', width: '140px' }} />
               <select className="input" value={activeCarrier} onChange={e => setActiveCarrier(e.target.value)} style={{ fontSize: '12px', padding: '6px 8px' }}>
-                {['Delhivery', 'Shiprocket', 'Shadowfax', 'Xpressbees', 'Blue Dart'].map(c => <option key={c}>{c}</option>)}
+                {['Delhivery', 'Shiprocket', 'Shadowfax', 'Xpressbees', 'Blue Dart'].map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               <input type="text" className="input" placeholder="Tracking ID" value={activeTrackId} onChange={e => setActiveTrackId(e.target.value)} style={{ fontSize: '12px', padding: '6px 10px', width: '130px' }} />
             </div>

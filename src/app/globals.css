@@ -1444,6 +1444,21 @@ body {
   border-radius: 6px;
 }
 
+select.input {
+  color-scheme: light;
+}
+select.input option {
+  background: #FFFFFF;
+  color: rgba(0,0,0,0.88);
+}
+[data-theme="dark"] select.input {
+  color-scheme: dark;
+}
+[data-theme="dark"] select.input option {
+  background: #2C2C2E;
+  color: rgba(255,255,255,0.92);
+}
+
 .form-container {
   display: flex;
   flex-direction: column;

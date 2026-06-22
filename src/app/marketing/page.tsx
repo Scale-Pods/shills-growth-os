@@ -140,7 +140,7 @@ export default function MarketingPage() {
   const [ugcPlatform, setUgcPlatform] = useState('Instagram Reels');
   const [ugcVibe, setUgcVibe] = useState('Aesthetic & clean');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedUgc, setGeneratedUgc] = useState<null | { product: string; platform: string; hooks: string[]; shots: string[]; script: string }>(null);
+  const [generatedUgc, setGeneratedUgc] = useState<null | { product: string; platform: string; hooks: string[]; shots: string[]; script: string; videos: string[] }>(null);
 
   // Calendar
   const [calendarPosts, setCalendarPosts] = useState<CalendarPost[]>([
@@ -241,20 +241,74 @@ export default function MarketingPage() {
   const handleGenerateUgc = () => {
     setIsGenerating(true);
     setGeneratedUgc(null);
+
+    const ctaSuffix = ugcPlatform === 'TikTok' ? 'Tap the link in bio!'
+      : ugcPlatform === 'Pinterest' ? 'Save this pin and shop the link!'
+      : ugcPlatform === 'Facebook Ads' ? 'Click Shop Now below!'
+      : ugcPlatform === 'Youtube Shorts' ? 'Check the description link!'
+      : 'Link in bio!';
+
+    const PRODUCT_DATA: Record<string, { hooks: string[]; shots: string[]; script: string }> = {
+      'Nail Gel Set #12': {
+        hooks: [
+          `"If you're still spending ₹3,000 at the nail salon, stop scrolling."`,
+          `"Doing my nails at home in 10 minutes — completely salon-done."`,
+        ],
+        shots: [
+          'Shot 1: Close-up of bare nails. Bring in Shills Nail Gel Set #12.',
+          'Shot 2: Apply base + nude shade + UV cure lamp in frame.',
+          'Shot 3: Final shiny nails overhead. Show Blinkit bag arriving.',
+        ],
+        script: `Hey guys! 💅 I stopped going to the nail salon — and saved so much money. Shills Nail Gel Set #12 on Blinkit in 10 minutes. Self-leveling, doesn't chip for 3 weeks. Apply, cure, done. Use code NAILS15. ${ctaSuffix}`,
+      },
+      'Rosewater Face Mist 100ml': {
+        hooks: [
+          `"This one mist saved my makeup from melting at 3 PM."`,
+          `"The Damask Rose extract that feels like a luxury spa — for ₹499."`,
+        ],
+        shots: [
+          'Shot 1: Exhausted model at desk, matte skin. Reach for the mist.',
+          'Shot 2: Slow-mo spray — dew droplets on skin, instant glow close-up.',
+          'Shot 3: Bottle aesthetics on marble. Promo code overlay.',
+        ],
+        script: `Midday slump? 🌹 Skin feeling dry and tight? One spray of Shills Rosewater Face Mist brings it back to life — organic damask rose + hyaluronic acid. Spray over makeup, look fresh instantly. Use code ROSE10. ${ctaSuffix}`,
+      },
+      'Vitamin C Face Serum 30ml': {
+        hooks: [
+          `"I got asked if I had a facial — it was just this ₹799 serum."`,
+          `"15% Vitamin C that actually works without burning your skin."`,
+        ],
+        shots: [
+          'Shot 1: Dull skin before. Apply 2 drops of Vitamin C serum.',
+          'Shot 2: Time-lapse morning glow-up. Bright, even skin tone.',
+          'Shot 3: Product on vanity. Before/after side by side.',
+        ],
+        script: `Tired of dull skin by midday? ✨ Shills Vitamin C Face Serum — 15% L-Ascorbic Acid, clinically brightening, cruelty-free. I use 2 drops every morning. 4 weeks later — people are asking if I got a facial. Get 15% off your first bottle. ${ctaSuffix}`,
+      },
+      'Hydrating Lavender Gel 100g': {
+        hooks: [
+          `"Non-sticky gel that actually keeps skin hydrated all day — finally."`,
+          `"My skin was peeling. This lavender gel fixed it in 3 days."`,
+        ],
+        shots: [
+          'Shot 1: Flaky, tight skin close-up. Apply Lavender Gel.',
+          'Shot 2: Skin visibly smooth and plump within seconds.',
+          'Shot 3: Relaxing aesthetic — product in lavender field edit.',
+        ],
+        script: `Dry skin people, this one's for you. 💜 Shills Hydrating Lavender Gel — non-sticky, absorbs in seconds, keeps skin soft for 24 hours. Real lavender extract + ceramides. I've been using it for a week and the difference is insane. ${ctaSuffix}`,
+      },
+    };
+
+    const data = PRODUCT_DATA[ugcProduct] ?? PRODUCT_DATA['Rosewater Face Mist 100ml'];
+
     setTimeout(() => {
-      const isNail = ugcProduct.includes('Gel Set');
       setGeneratedUgc({
         product: ugcProduct,
         platform: ugcPlatform,
-        hooks: isNail
-          ? ['"If you\'re still spending ₹3,000 at the nail salon, stop scrolling."', '"Doing my nails at home in 10 minutes — completely salon-done."']
-          : ['"This one mist saved my makeup from caking at 3 PM."', '"The Damask Rose extract that feels like a luxury spa facial."'],
-        shots: isNail
-          ? ['Shot 1: Close-up of bare nails. Bring in Shills Nail Gel Set #12.', 'Shot 2: Apply base + nude shade + UV cure.', 'Shot 3: Final shiny nails. Show Blinkit bag arriving.']
-          : ['Shot 1: Exhausted model at desk. Spray Rosewater Mist.', 'Shot 2: Dew droplets on skin — instant glow close-up.', 'Shot 3: Bottle aesthetics. Promo code overlay.'],
-        script: isNail
-          ? `Hey guys! 💅 I stopped going to the nail salon — and saved so much money. Shills Nail Gel Set #12 on Blinkit in 10 minutes. Self-leveling, doesn't chip for 3 weeks. Apply, cure, done. Use code NAILS15. Link in bio!`
-          : `Midday slump? 🌹 Skin feeling dry and tight? One spray of Shills Rosewater Face Mist brings it back to dewy life — organic damask rose + hyaluronic acid. Spray over makeup, look fresh instantly. Tap shop button!`,
+        hooks: data.hooks,
+        shots: data.shots,
+        script: data.script,
+        videos: ['/UGC_2.mp4', '/UGC-1.mp4'],
       });
       setIsGenerating(false);
       showToast('AI UGC script generated.', 'success');
@@ -657,11 +711,11 @@ export default function MarketingPage() {
               <div>
                 <label style={{ fontSize: '10px', fontWeight: '600', display: 'block', marginBottom: '4px', color: 'var(--label-secondary)' }}>Platform</label>
                 <select className="input" style={{ width: '100%', padding: '7px 8px', fontSize: '12px' }} value={ugcPlatform} onChange={e => setUgcPlatform(e.target.value)}>
-                  <option>Instagram Reels</option>
-                  <option>Youtube Shorts</option>
-                  <option>TikTok</option>
-                  <option>Pinterest</option>
-                  <option>Facebook Ads</option>
+                  <option value="Instagram Reels">Instagram Reels</option>
+                  <option value="Youtube Shorts">Youtube Shorts</option>
+                  <option value="TikTok">TikTok</option>
+                  <option value="Pinterest">Pinterest</option>
+                  <option value="Facebook Ads">Facebook Ads</option>
                 </select>
               </div>
               <div>
@@ -686,6 +740,25 @@ export default function MarketingPage() {
                 </button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--label-tertiary)', textTransform: 'uppercase', marginBottom: '8px' }}>UGC Video Previews</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    {generatedUgc.videos.map((src, i) => (
+                      <div key={i} style={{ borderRadius: '10px', overflow: 'hidden', background: 'var(--fill-quaternary)', border: '1px solid var(--separator)', position: 'relative' }}>
+                        <div style={{ fontSize: '9px', fontWeight: '700', color: 'var(--label-tertiary)', textTransform: 'uppercase', padding: '6px 10px 4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--red)', display: 'inline-block' }} />
+                          Creator {i + 1}
+                        </div>
+                        <video
+                          src={src}
+                          controls
+                          playsInline
+                          style={{ width: '100%', display: 'block', maxHeight: '260px', objectFit: 'cover', background: '#000' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <div>
                   <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--label-tertiary)', textTransform: 'uppercase', marginBottom: '6px' }}>Hook Options</div>
                   {generatedUgc.hooks.map((h, i) => (
