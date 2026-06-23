@@ -20,7 +20,8 @@ import {
   History,
   ArrowRight,
   Layers,
-  BarChart2
+  BarChart2,
+  Maximize2
 } from 'lucide-react';
 
 // ─── Custom SVG Icons ─────────────────────────────────────────────────────────
@@ -141,6 +142,7 @@ export default function MarketingPage() {
   const [ugcVibe, setUgcVibe] = useState('Aesthetic & clean');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedUgc, setGeneratedUgc] = useState<null | { product: string; platform: string; hooks: string[]; shots: string[]; script: string; videos: string[] }>(null);
+  const [fullscreenVideo, setFullscreenVideo] = useState<string | null>(null);
 
   // Calendar
   const [calendarPosts, setCalendarPosts] = useState<CalendarPost[]>([
@@ -744,16 +746,20 @@ export default function MarketingPage() {
                   <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--label-tertiary)', textTransform: 'uppercase', marginBottom: '8px' }}>UGC Video Previews</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     {generatedUgc.videos.map((src, i) => (
-                      <div key={i} style={{ borderRadius: '10px', overflow: 'hidden', background: 'var(--fill-quaternary)', border: '1px solid var(--separator)', position: 'relative' }}>
-                        <div style={{ fontSize: '9px', fontWeight: '700', color: 'var(--label-tertiary)', textTransform: 'uppercase', padding: '6px 10px 4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <div key={i} onClick={() => setFullscreenVideo(src)} style={{ borderRadius: '10px', overflow: 'hidden', background: 'var(--fill-quaternary)', border: '1px solid var(--separator)', position: 'relative', cursor: 'pointer', aspectRatio: '9/16', maxHeight: '280px' }}>
+                        <div style={{ fontSize: '9px', fontWeight: '700', color: 'var(--label-tertiary)', textTransform: 'uppercase', padding: '6px 10px 4px', display: 'flex', alignItems: 'center', gap: '4px', position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2, background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%)' }}>
                           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--red)', display: 'inline-block' }} />
                           Creator {i + 1}
+                          <Maximize2 size={10} style={{ marginLeft: 'auto', opacity: 0.6 }} />
                         </div>
                         <video
                           src={src}
-                          controls
+                          autoPlay
+                          loop
+                          muted
                           playsInline
-                          style={{ width: '100%', display: 'block', maxHeight: '260px', objectFit: 'cover', background: '#000' }}
+                          preload="auto"
+                          style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover', background: '#000' }}
                         />
                       </div>
                     ))}
@@ -844,6 +850,24 @@ export default function MarketingPage() {
             <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--separator)' }}>
               <button className="btn-secondary" onClick={() => setSelectedCalItem(null)}>Close</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── FULLSCREEN VIDEO OVERLAY ──────────────────────────────────────────── */}
+      {fullscreenVideo && (
+        <div onClick={() => setFullscreenVideo(null)} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '20px' }}>
+          <button onClick={() => setFullscreenVideo(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10, color: 'white' }}>
+            <X size={20} />
+          </button>
+          <div onClick={(e) => e.stopPropagation()} style={{ maxHeight: 'calc(100vh - 40px)', maxWidth: 'calc(100vw - 40px)', aspectRatio: '9/16', position: 'relative' }}>
+            <video
+              src={fullscreenVideo}
+              controls
+              autoPlay
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000', borderRadius: '8px' }}
+            />
           </div>
         </div>
       )}
