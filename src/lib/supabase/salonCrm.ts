@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL_salon_crm as string;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_salon_crm as string;
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL_salon_crm || 'https://placeholder.supabase.co';
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_salon_crm || 'placeholder';
 
 // Client-side (browser) instance — anon key, subject to RLS.
 export const salonCrmClient = createClient(url, anonKey);
@@ -9,7 +9,7 @@ export const salonCrmClient = createClient(url, anonKey);
 // Server-side instance — service role key, bypasses RLS. Only import
 // this from server components / route handlers, never from client code.
 export function getSalonCrmServiceClient() {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY_salon_crm as string;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY_salon_crm || 'placeholder';
   return createClient(url, serviceKey, {
     auth: { persistSession: false },
   });
