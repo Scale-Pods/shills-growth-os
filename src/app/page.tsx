@@ -10,7 +10,7 @@ export default function Home() {
 
   useEffect(() => {
     if (isLoggedIn) {
-      router.replace('/dashboard');
+      router.replace('/master');
     }
   }, [isLoggedIn, router]);
 

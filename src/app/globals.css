@@ -195,6 +195,7 @@ body {
 .sidebar:hover {
   width: 260px;
   background: rgba(242,242,247,0.92);
+  overflow: visible;
 }
 
 [data-theme="dark"] .sidebar {

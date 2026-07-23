@@ -151,7 +151,7 @@ export default function DashboardPage() {
       <div className="metrics-grid select-none" style={{ marginBottom: '24px' }}>
         
         {/* Module 3 Widget */}
-        <Link href="/accounts-receivable" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <Link href="/accounts-receivable/dashboard" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="metric-tile liquid-card" style={{ '--tile-accent-color': 'var(--purple)', cursor: 'pointer' } as React.CSSProperties}>
             <span className="label">Receivables Outstanding</span>
             <span className="value">₹{(totalOutstanding / 100000).toFixed(1)}L</span>
@@ -184,7 +184,7 @@ export default function DashboardPage() {
         </Link>
 
         {/* Module 4 Widget */}
-        <Link href="/salon-sales" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <Link href="/salon-crm/dashboard" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="metric-tile liquid-card" style={{ '--tile-accent-color': 'var(--orange)', cursor: 'pointer' } as React.CSSProperties}>
             <span className="label">Salon pipeline</span>
             <span className="value">₹{(pipelineValue / 100000).toFixed(1)}L</span>
@@ -356,7 +356,7 @@ export default function DashboardPage() {
                 <h3 className="card-title" style={{ fontSize: '14px', fontWeight: '700' }}>Module 4: Salon B2B Pipeline</h3>
                 <span className="card-subtitle" style={{ fontSize: '11px', color: 'var(--label-secondary)' }}>Maps scraper lead list generation</span>
               </div>
-              <Link href="/salon-sales" style={{ fontSize: '11px', color: 'var(--blue)', fontWeight: '600', textDecoration: 'none' }}>
+              <Link href="/salon-crm/dashboard" style={{ fontSize: '11px', color: 'var(--blue)', fontWeight: '600', textDecoration: 'none' }}>
                 Sales CRM
               </Link>
             </div>

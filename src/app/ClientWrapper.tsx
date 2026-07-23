@@ -17,6 +17,7 @@ import {
   Menu,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Search,
   Calendar,
   Bell,
@@ -26,7 +27,13 @@ import {
   CheckCircle2,
   Info,
   UserCheck,
-  Activity
+  Activity,
+  Building2,
+  MapPin,
+  MessageSquare,
+  Mail,
+  Phone,
+  Check
 } from 'lucide-react';
 
 // Interfaces for our state elements to ensure type safety
@@ -227,13 +234,162 @@ const INITIAL_CONTENT_DRAFTS: ContentDraft[] = [
   { id: 'c-3', title: 'Vitamin C Glow broadcast copy', type: 'Ad Campaign', platform: 'Facebook Ads', product: 'Vitamin C Face Serum 30ml', status: 'approved', scriptText: 'Ad Copy: "Tired of dull skin by midday? Our Vitamin C Serum is packed with 15% L-Ascorbic Acid for 24hr brightness. Clinically proven. Cruelty-free.\nShop Now to get 15% off your first subscription!"' }
 ];
 
+// -------------------------------------------------------
+// Workspace definitions — the sidebar dropdown switches
+// between these, each with its own nav item list.
+// -------------------------------------------------------
+interface WorkspaceNavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number }>;
+}
+
+interface WorkspaceSection {
+  label: string;
+  items: WorkspaceNavItem[];
+}
+
+interface Workspace {
+  id: string;
+  name: string;
+  tagline: string;
+  icon: React.ComponentType<{ size?: number }>;
+  homePath: string;
+  sections: WorkspaceSection[];
+}
+
+const WORKSPACES: Workspace[] = [
+  {
+    id: 'master',
+    name: 'Master Dashboard',
+    tagline: 'All channels combined',
+    icon: LayoutDashboard,
+    homePath: '/master',
+    sections: [
+      { label: 'Overview', items: [{ href: '/master', label: 'Master Dashboard', icon: LayoutDashboard }] },
+    ],
+  },
+  {
+    id: 'executive',
+    name: 'Executive Board',
+    tagline: 'Founder command center',
+    icon: LayoutDashboard,
+    homePath: '/dashboard',
+    sections: [
+      { label: 'Founder Core', items: [{ href: '/dashboard', label: 'Executive Board', icon: LayoutDashboard }] },
+    ],
+  },
+  {
+    id: 'inventory',
+    name: 'Inventory Intel',
+    tagline: 'Stock & forecasting',
+    icon: Package,
+    homePath: '/inventory',
+    sections: [
+      { label: 'Operations', items: [{ href: '/inventory', label: 'Inventory Intel', icon: Package }] },
+    ],
+  },
+  {
+    id: 'customer-care',
+    name: 'Customer Care',
+    tagline: 'Support & reviews',
+    icon: Bot,
+    homePath: '/customer-care',
+    sections: [
+      { label: 'Operations', items: [{ href: '/customer-care', label: 'Customer Care', icon: Bot }] },
+    ],
+  },
+  {
+    id: 'content-os',
+    name: 'Content OS',
+    tagline: 'Marketing content engine',
+    icon: Sparkles,
+    homePath: '/marketing',
+    sections: [
+      { label: 'Marketing', items: [{ href: '/marketing', label: 'Content OS', icon: Sparkles }] },
+    ],
+  },
+  {
+    id: 'salon-crm',
+    name: 'Salon CRM',
+    tagline: 'B2B salon lead engine',
+    icon: Users,
+    homePath: '/salon-crm/dashboard',
+    sections: [
+      {
+        label: 'Lead Generation',
+        items: [{ href: '/salon-crm/scraper', label: 'Google Maps Scraper', icon: MapPin }],
+      },
+      {
+        label: 'Pipeline',
+        items: [{ href: '/salon-crm/leads', label: 'Leads', icon: Users }],
+      },
+      {
+        label: 'Channels',
+        items: [
+          { href: '/salon-crm/whatsapp', label: 'WhatsApp', icon: MessageSquare },
+          { href: '/salon-crm/email', label: 'Email', icon: Mail },
+        ],
+      },
+      {
+        label: 'Insights',
+        items: [{ href: '/salon-crm/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
+      },
+    ],
+  },
+  {
+    id: 'receivables',
+    name: 'Receivables Recovery',
+    tagline: 'AR collections engine',
+    icon: DollarSign,
+    homePath: '/accounts-receivable/dashboard',
+    sections: [
+      {
+        label: 'Overview',
+        items: [{ href: '/accounts-receivable/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
+      },
+      {
+        label: 'Channels',
+        items: [
+          { href: '/accounts-receivable/whatsapp', label: 'WhatsApp Panel', icon: MessageSquare },
+          { href: '/accounts-receivable/email', label: 'Email Panel', icon: Mail },
+          { href: '/accounts-receivable/voice', label: 'Voice Panel', icon: Phone },
+        ],
+      },
+    ],
+  },
+];
+
+function workspaceForPath(pathname: string | null): Workspace {
+  if (!pathname) return WORKSPACES[0];
+  if (pathname.startsWith('/salon-crm') || pathname.startsWith('/salon-sales')) {
+    return WORKSPACES.find((w) => w.id === 'salon-crm')!;
+  }
+  if (pathname.startsWith('/accounts-receivable')) {
+    return WORKSPACES.find((w) => w.id === 'receivables')!;
+  }
+  if (pathname.startsWith('/inventory')) return WORKSPACES.find((w) => w.id === 'inventory')!;
+  if (pathname.startsWith('/customer-care')) return WORKSPACES.find((w) => w.id === 'customer-care')!;
+  if (pathname.startsWith('/marketing')) return WORKSPACES.find((w) => w.id === 'content-os')!;
+  if (pathname.startsWith('/dashboard')) return WORKSPACES.find((w) => w.id === 'executive')!;
+  if (pathname.startsWith('/master')) return WORKSPACES.find((w) => w.id === 'master')!;
+  return WORKSPACES[0];
+}
+
 export function ClientWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  
+
   // App Global States
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const activeWorkspace = workspaceForPath(pathname);
+
+  // Close the workspace dropdown whenever the route changes.
+  useEffect(() => {
+    setWorkspaceMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const saved = localStorage.getItem('isLoggedIn');
@@ -343,12 +499,20 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
   }, []);
 
   const spotlightOptions = [
+    { text: 'Go to Master Dashboard', type: 'navigation', target: '/master', shortcut: '⌘0' },
     { text: 'Go to Executive Dashboard', type: 'navigation', target: '/dashboard', shortcut: '⌘1' },
     { text: 'Go to Inventory Intelligence', type: 'navigation', target: '/inventory', shortcut: '⌘2' },
     { text: 'Go to Customer Care & Reviews', type: 'navigation', target: '/customer-care', shortcut: '⌘3' },
-    { text: 'Go to Accounts Receivable', type: 'navigation', target: '/accounts-receivable', shortcut: '⌘4' },
-    { text: 'Go to B2B Salon Sales CRM', type: 'navigation', target: '/salon-sales', shortcut: '⌘5' },
-    { text: 'Go to Marketing Content OS', type: 'navigation', target: '/marketing', shortcut: '⌘6' },
+    { text: 'Go to Marketing Content OS', type: 'navigation', target: '/marketing', shortcut: '⌘4' },
+    { text: 'Go to Salon CRM: Dashboard', type: 'navigation', target: '/salon-crm/dashboard', shortcut: '⌘5' },
+    { text: 'Go to Salon CRM: Leads', type: 'navigation', target: '/salon-crm/leads', shortcut: '' },
+    { text: 'Go to Salon CRM: Google Maps Scraper', type: 'navigation', target: '/salon-crm/scraper', shortcut: '' },
+    { text: 'Go to Salon CRM: WhatsApp', type: 'navigation', target: '/salon-crm/whatsapp', shortcut: '' },
+    { text: 'Go to Salon CRM: Email', type: 'navigation', target: '/salon-crm/email', shortcut: '' },
+    { text: 'Go to Receivables: Dashboard', type: 'navigation', target: '/accounts-receivable/dashboard', shortcut: '⌘6' },
+    { text: 'Go to Receivables: WhatsApp Panel', type: 'navigation', target: '/accounts-receivable/whatsapp', shortcut: '' },
+    { text: 'Go to Receivables: Email Panel', type: 'navigation', target: '/accounts-receivable/email', shortcut: '' },
+    { text: 'Go to Receivables: Voice Panel', type: 'navigation', target: '/accounts-receivable/voice', shortcut: '' },
   ];
 
   const filteredSpotlightOptions = spotlightOptions.filter((item) =>
@@ -461,81 +625,118 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
             {/* macOS Frosted Sidebar Rail */}
             <aside className={`sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
               <div
-                className="sidebar-header"
+                className="sidebar-header workspace-switcher-wrapper"
                 style={{
-                  height: '96px',
-                  padding: '16px',
+                  padding: '14px 12px',
                   boxSizing: 'border-box',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
                   borderBottom: '1px solid var(--separator)',
                 }}
               >
-                {/* Collapsed state: just the logo icon */}
-                <div className="sidebar-logo-collapsed">
-                  <img src="/icon.png" alt="Shills OS" style={{ width: '40px', height: '40px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 4px 12px rgba(0,0,0,0.25)', display: 'block' }} />
-                </div>
-                {/* Expanded state: logo + brand name + tagline */}
-                <div className="sidebar-logo-expanded">
-                  <img src="/icon.png" alt="Shills OS Logo" style={{ width: '48px', height: '48px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 4px 14px rgba(0,0,0,0.25)', flexShrink: 0 }} />
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-                    <span style={{ fontWeight: '800', fontSize: '17px', color: '#fff', letterSpacing: '-0.02em' }}>Shills OS</span>
-                    <span style={{ fontSize: '9.5px', color: 'var(--blue)', fontWeight: '700', marginTop: '3px', letterSpacing: '0.02em' }}>Powered by ScalePods</span>
+                <button
+                  onClick={() => setWorkspaceMenuOpen((prev) => !prev)}
+                  title={`${activeWorkspace.name} — click to switch workspace`}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--glass-border)',
+                    background: workspaceMenuOpen ? 'var(--fill-tertiary)' : 'var(--fill-quaternary)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--blue)', color: '#fff' }}>
+                    <activeWorkspace.icon size={15} />
                   </div>
-                </div>
+                  <div className="sidebar-logo-expanded" style={{ flexDirection: 'column', lineHeight: 1.2, flex: 1, minWidth: 0 }}>
+                    <span style={{ fontWeight: '800', fontSize: '13px', color: 'var(--label-primary)', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeWorkspace.name}</span>
+                    <span style={{ fontSize: '9.5px', color: 'var(--label-tertiary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeWorkspace.tagline}</span>
+                  </div>
+                  <ChevronDown size={14} className="sidebar-logo-expanded" style={{ color: 'var(--label-tertiary)', flexShrink: 0, transform: workspaceMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease' }} />
+                </button>
               </div>
 
+              {workspaceMenuOpen && (
+                <>
+                  <div onClick={() => setWorkspaceMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1500 }} />
+                  <div
+                    className="workspace-switcher-menu"
+                    style={{
+                      position: 'fixed',
+                      top: '112px',
+                      left: '32px',
+                      width: '260px',
+                      zIndex: 1501,
+                      background: 'var(--bg-layer1)',
+                      border: '1px solid var(--glass-border)',
+                      borderRadius: '14px',
+                      boxShadow: '0 16px 40px rgba(0,0,0,0.45)',
+                      padding: '6px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px',
+                      maxHeight: '70vh',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {WORKSPACES.map((ws) => {
+                      const WsIcon = ws.icon;
+                      const isActive = ws.id === activeWorkspace.id;
+                      return (
+                        <button
+                          key={ws.id}
+                          onClick={() => {
+                            setWorkspaceMenuOpen(false);
+                            router.push(ws.homePath);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '9px 10px',
+                            borderRadius: '9px',
+                            border: 'none',
+                            background: isActive ? 'rgba(0, 122, 255, 0.12)' : 'transparent',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            width: '100%',
+                          }}
+                        >
+                          <div style={{ width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isActive ? 'var(--blue)' : 'var(--fill-quaternary)', color: isActive ? '#fff' : 'var(--label-secondary)' }}>
+                            <WsIcon size={13} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--label-primary)' }}>{ws.name}</div>
+                            <div style={{ fontSize: '10.5px', color: 'var(--label-tertiary)' }}>{ws.tagline}</div>
+                          </div>
+                          {isActive && <Check size={14} style={{ color: 'var(--blue)', flexShrink: 0 }} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
               <nav className="sidebar-nav">
-                <div className="nav-section-label">Founder Core</div>
-                
-                <Link href="/dashboard" style={{ textDecoration: 'none' }}>
-                  <div className={`nav-item ${pathname === '/dashboard' ? 'active' : ''}`}>
-                    <LayoutDashboard size={16} />
-                    <span>Executive Board</span>
-                  </div>
-                </Link>
-
-                <div className="nav-section-label">Operations</div>
-
-                <Link href="/inventory" style={{ textDecoration: 'none' }}>
-                  <div className={`nav-item ${pathname === '/inventory' ? 'active' : ''}`}>
-                    <Package size={16} />
-                    <span>Inventory Intel</span>
-                  </div>
-                </Link>
-
-                <Link href="/customer-care" style={{ textDecoration: 'none' }}>
-                  <div className={`nav-item ${pathname === '/customer-care' ? 'active' : ''}`}>
-                    <Bot size={16} />
-                    <span>Customer Care</span>
-                  </div>
-                </Link>
-
-                <div className="nav-section-label">Finance & Sales</div>
-
-                <Link href="/accounts-receivable" style={{ textDecoration: 'none' }}>
-                  <div className={`nav-item ${pathname === '/accounts-receivable' ? 'active' : ''}`}>
-                    <DollarSign size={16} />
-                    <span>Receivables OS</span>
-                  </div>
-                </Link>
-
-                <Link href="/salon-sales" style={{ textDecoration: 'none' }}>
-                  <div className={`nav-item ${pathname === '/salon-sales' ? 'active' : ''}`}>
-                    <Users size={16} />
-                    <span>Salon CRM</span>
-                  </div>
-                </Link>
-
-                <div className="nav-section-label">Marketing</div>
-
-                <Link href="/marketing" style={{ textDecoration: 'none' }}>
-                  <div className={`nav-item ${pathname === '/marketing' ? 'active' : ''}`}>
-                    <Sparkles size={16} />
-                    <span>Content OS</span>
-                  </div>
-                </Link>
+                {activeWorkspace.sections.map((section) => (
+                  <React.Fragment key={section.label}>
+                    <div className="nav-section-label">{section.label}</div>
+                    {section.items.map((item) => {
+                      const ItemIcon = item.icon;
+                      return (
+                        <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+                          <div className={`nav-item ${pathname === item.href ? 'active' : ''}`}>
+                            <ItemIcon size={16} />
+                            <span>{item.label}</span>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
               </nav>
 
               <div className="sidebar-footer">
@@ -613,10 +814,18 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                     <button className="nav-ctrl-btn" onClick={goForward} title="Forward" style={{ border: 'none', background: 'transparent', color: 'var(--label-secondary)' }}><ChevronRight size={16} /></button>
                   </div>
                   <div className="breadcrumb" style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <span className="breadcrumb-parent">Shills OS</span>
+                    <span className="breadcrumb-parent">{activeWorkspace.name}</span>
                     <span className="breadcrumb-separator">/</span>
                     <span className="breadcrumb-active" style={{ textTransform: 'capitalize', fontWeight: '600' }}>
-                      {pathname === '/' ? 'Dashboard' : pathname ? pathname.replace('/', '').replace('-', ' ') : 'Dashboard'}
+                      {(() => {
+                        const currentItem = activeWorkspace.sections
+                          .flatMap((s) => s.items)
+                          .find((i) => i.href === pathname);
+                        if (currentItem) return currentItem.label;
+                        if (pathname === '/') return 'Dashboard';
+                        const lastSegment = pathname?.split('/').filter(Boolean).pop() ?? 'Dashboard';
+                        return lastSegment.replace(/-/g, ' ');
+                      })()}
                     </span>
                     <span style={{ fontSize: '10px', background: 'rgba(0, 122, 255, 0.08)', color: 'var(--blue)', border: '1px solid rgba(0, 122, 255, 0.15)', padding: '2px 8px', borderRadius: '12px', fontWeight: '600', marginLeft: '8px' }}>
                       Powered by ScalePods
@@ -706,7 +915,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                     onClick={() => {
                       setIsLoggedIn(true);
                       if (pathname === '/') {
-                        router.push('/dashboard');
+                        router.push('/master');
                       }
                     }}
                     style={{ cursor: 'pointer', background: 'linear-gradient(135deg, var(--blue), var(--purple))', padding: '8px 20px', borderRadius: '20px', border: 'none', color: '#fff', fontSize: '13px', fontWeight: '600', transition: 'all 200ms ease', boxShadow: '0 4px 12px rgba(0, 122, 255, 0.2)' }}
@@ -810,7 +1019,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                         e.preventDefault();
                         setIsLoggedIn(true);
                         if (pathname === '/') {
-                          router.push('/dashboard');
+                          router.push('/master');
                         }
                         setTheme('dark');
                         showToast('Identity authorized. Initializing Shills Growth OS...', 'success');
