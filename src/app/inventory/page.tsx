@@ -230,7 +230,7 @@ export default function InventoryPage() {
             Multi-channel stock intelligence • ABC classification • Channel reallocation • Smart PO engine
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button className="btn-secondary" onClick={() => showToast('Pulled latest stock from Shopify, Nykaa, Blinkit & Amazon APIs.', 'success')}>
             <RefreshCw size={14} /> Force Sync
           </button>

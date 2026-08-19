@@ -379,7 +379,6 @@ export default function MarketingPage() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>Marketing Content OS</h2>
-            <span style={{ fontSize: '10px', background: 'rgba(0,122,255,0.08)', color: 'var(--blue)', border: '1px solid rgba(0,122,255,0.15)', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Powered by ScalePods</span>
           </div>
           <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
             5-stage Maker-Checker pipeline · Role-based approvals · Revision threads · Scheduled publishing

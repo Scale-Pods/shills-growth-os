@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Chart from 'chart.js/auto';
 import { useAppContext } from '../ClientWrapper';
@@ -20,6 +20,7 @@ import {
   Star,
   Activity
 } from 'lucide-react';
+import { isWithinDateRange } from '@/lib/dateRangeFilter';
 
 export default function DashboardPage() {
   const {
@@ -30,16 +31,32 @@ export default function DashboardPage() {
     salonLeads,
     contentDrafts,
     dateFilter,
+    dateRange,
+    dateLabel,
     showToast
   } = useAppContext();
 
   const chartRef = useRef<HTMLCanvasElement | null>(null);
   const chartInstance = useRef<Chart | null>(null);
 
+  // Only receivables (invoice date) and reviews (review date) carry real dates in mock data.
+  // Inventory, support cases, salon leads, and content drafts have no date fields to filter on.
+  const dateReceivables = useMemo(
+    () =>
+      receivables
+        .map((r) => ({ ...r, invoices: r.invoices.filter((inv) => isWithinDateRange(inv.date, dateRange)) }))
+        .filter((r) => (dateRange?.from || dateRange?.to ? r.invoices.length > 0 : true)),
+    [receivables, dateRange]
+  );
+  const dateReviews = useMemo(
+    () => reviews.filter((r) => isWithinDateRange(r.date, dateRange)),
+    [reviews, dateRange]
+  );
+
   // Compute stats for overview
-  const totalOutstanding = receivables.reduce((acc, curr) => acc + curr.outstanding, 0);
-  const overdueCount = receivables.filter(r => r.overdueDays > 0).length;
-  const overdueValue = receivables.filter(r => r.overdueDays > 0).reduce((acc, curr) => acc + curr.outstanding, 0);
+  const totalOutstanding = dateReceivables.reduce((acc, curr) => acc + curr.outstanding, 0);
+  const overdueCount = dateReceivables.filter(r => r.overdueDays > 0).length;
+  const overdueValue = dateReceivables.filter(r => r.overdueDays > 0).reduce((acc, curr) => acc + curr.outstanding, 0);
 
   // Inventory Stats
   const lowStockProducts = inventory.filter(p => {
@@ -56,7 +73,7 @@ export default function DashboardPage() {
   // Customer Care Stats
   const activeCases = supportCases.filter(c => c.status === 'Open').length;
   const avgCsat = 4.82;
-  const negativeReviewsIntercepted = reviews.filter(r => r.rating <= 3).length;
+  const negativeReviewsIntercepted = dateReviews.filter(r => r.rating <= 3).length;
 
   // Salon CRM Stats
   const totalLeadsCount = salonLeads.length;
@@ -146,7 +163,7 @@ export default function DashboardPage() {
 
   return (
     <div style={{ animation: 'fadeIn 300ms ease' }}>
-      
+
       {/* Metrics Row */}
       <div className="metrics-grid select-none" style={{ marginBottom: '24px' }}>
         
@@ -327,7 +344,7 @@ export default function DashboardPage() {
                   <div style={{ fontSize: '10px', color: 'var(--label-tertiary)' }}>CSAT</div>
                 </div>
                 <div style={{ textAlign: 'center', flex: 1, borderLeft: '1px solid var(--separator)', borderRight: '1px solid var(--separator)' }}>
-                  <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--blue)' }}>{reviews.length}</div>
+                  <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--blue)' }}>{dateReviews.length}</div>
                   <div style={{ fontSize: '10px', color: 'var(--label-tertiary)' }}>Reviews Gen</div>
                 </div>
                 <div style={{ textAlign: 'center', flex: 1 }}>

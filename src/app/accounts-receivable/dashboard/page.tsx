@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAppContext } from '../../ClientWrapper';
 import {
   Clock,
@@ -8,9 +8,18 @@ import {
   TrendingUp,
   CheckCircle2,
 } from 'lucide-react';
+import { isWithinDateRange } from '@/lib/dateRangeFilter';
 
 export default function AccountsReceivableDashboardPage() {
-  const { receivables } = useAppContext();
+  const { receivables, dateRange, dateLabel } = useAppContext();
+
+  const dateReceivables = useMemo(
+    () =>
+      receivables
+        .map((r) => ({ ...r, invoices: r.invoices.filter((inv) => isWithinDateRange(inv.date, dateRange)) }))
+        .filter((r) => (dateRange?.from || dateRange?.to ? r.invoices.length > 0 : true)),
+    [receivables, dateRange]
+  );
 
   const outstandingTotal = 2780000;
   const overdueTotal = 940000;
@@ -33,11 +42,13 @@ export default function AccountsReceivableDashboardPage() {
 
   return (
     <div style={{ animation: 'fadeIn 300ms ease' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>Receivables Dashboard</h2>
-        <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
-          Overview of outstanding balances, ageing, and the 21-day AI recovery workflow.
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>Receivables Dashboard</h2>
+          <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
+            Overview of outstanding balances, ageing, and the 21-day AI recovery workflow.
+          </p>
+        </div>
       </div>
 
       <div className="metrics-grid mb-24">
@@ -122,7 +133,7 @@ export default function AccountsReceivableDashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {receivables.map((r) => (
+              {dateReceivables.map((r) => (
                 <tr key={r.id} style={{ borderBottom: '1px solid var(--separator)' }}>
                   <td style={{ padding: '12px 8px' }}>
                     <span style={{ fontWeight: '700', display: 'block' }}>{r.name}</span>

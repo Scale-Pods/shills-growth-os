@@ -4658,3 +4658,81 @@ select.input option {
   /* Sidebar nav labels: always hidden on tiny screens even if hovered,
      labels are already inside the hover-show elements so this is fine */
 }
+
+/* ==========================================================================
+   Shared Date Range Picker (react-day-picker theming)
+   ========================================================================== */
+.date-range-popover .rdp-root {
+  --rdp-accent-color: var(--blue);
+  --rdp-accent-background-color: rgba(0, 122, 255, 0.16);
+  --rdp-day-height: 34px;
+  --rdp-day-width: 34px;
+  --rdp-day_button-border-radius: 8px;
+  --rdp-selected-border: 2px solid var(--blue);
+  --rdp-today-color: var(--blue);
+  color: var(--label-primary);
+}
+
+.date-range-popover .rdp-months {
+  gap: 16px;
+}
+
+.date-range-popover .rdp-month_caption {
+  color: var(--label-primary);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.date-range-popover .rdp-weekday {
+  color: var(--label-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.date-range-popover .rdp-day_button {
+  color: var(--label-primary);
+  font-size: 12.5px;
+}
+
+.date-range-popover .rdp-day_button:hover:not([disabled]) {
+  background: var(--fill-tertiary);
+}
+
+.date-range-popover .rdp-range_start .rdp-day_button,
+.date-range-popover .rdp-range_end .rdp-day_button {
+  background: var(--blue) !important;
+  color: #fff !important;
+}
+
+.date-range-popover .rdp-range_middle .rdp-day_button {
+  background: rgba(0, 122, 255, 0.14);
+  color: var(--label-primary);
+}
+
+.date-range-popover .rdp-outside .rdp-day_button {
+  color: var(--label-tertiary);
+  opacity: 0.5;
+}
+
+.date-range-popover .rdp-nav button {
+  color: var(--label-secondary);
+}
+
+.date-range-popover .rdp-nav button:hover {
+  background: var(--fill-tertiary);
+}
+
+@media (max-width: 720px) {
+  .date-range-popover {
+    flex-direction: column !important;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .date-range-popover > div:first-child {
+    border-right: none !important;
+    border-bottom: 1px solid var(--separator);
+    width: 100% !important;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+}

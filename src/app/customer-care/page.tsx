@@ -24,6 +24,7 @@ import {
   RotateCcw,
   ArrowUpRight
 } from 'lucide-react';
+import { isWithinDateRange } from '@/lib/dateRangeFilter';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ const SLA_RULES = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CustomerCarePage() {
-  const { supportCases, setSupportCases, reviews, setReviews, showToast } = useAppContext();
+  const { supportCases, setSupportCases, reviews, setReviews, showToast, dateRange } = useAppContext();
 
   // ── Page State ──────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<'inbox' | 'lifecycle' | 'tracking' | 'reviews' | 'sla'>('inbox');
@@ -129,6 +130,9 @@ export default function CustomerCarePage() {
   // ── Derived ─────────────────────────────────────────────────────────────────
   const timeline = useMemo(() => buildOrderTimeline(activeOrderId, activeCarrier, activeTrackId), [activeOrderId, activeCarrier, activeTrackId]);
 
+  // Only reviews carry a real date field; support cases only have a relative "time" string, so they are left unfiltered.
+  const dateReviews = useMemo(() => reviews.filter(r => isWithinDateRange(r.date, dateRange)), [reviews, dateRange]);
+
   const filteredCases = useMemo(() => supportCases.filter(c => {
     const matchChannel = selectedChannel === 'all' || c.channel === selectedChannel;
     const matchStatus = statusFilterCases === 'all' || c.status.toLowerCase() === statusFilterCases;
@@ -138,8 +142,8 @@ export default function CustomerCarePage() {
   const activeCase = supportCases.find(c => c.id === activeCaseId) || supportCases[0];
 
   const csatScore = 4.82;
-  const totalReviews = reviews.length;
-  const negativeIntercepted = reviews.filter(r => r.rating <= 3).length;
+  const totalReviews = dateReviews.length;
+  const negativeIntercepted = dateReviews.filter(r => r.rating <= 3).length;
   const openCases = supportCases.filter(c => c.status === 'Open').length;
 
   // ── Actions ─────────────────────────────────────────────────────────────────
@@ -202,13 +206,12 @@ export default function CustomerCarePage() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>Customer Care Command Centre</h2>
-            <span style={{ fontSize: '10px', background: 'rgba(0,122,255,0.08)', color: 'var(--blue)', border: '1px solid rgba(0,122,255,0.15)', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Powered by ScalePods</span>
           </div>
           <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
             Full order lifecycle WhatsApp automation • Live carrier tracking • AI support inbox • Review interception
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button className="btn-secondary" onClick={() => showToast('Syncing all open cases from WhatsApp, Shopify & Instagram DM...', 'info')}>
             <RefreshCw size={14} /> Sync Inbox
           </button>
@@ -600,7 +603,7 @@ export default function CustomerCarePage() {
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-            {reviews.map(r => (
+            {dateReviews.map(r => (
               <div key={r.id} style={{ background: 'var(--fill-quaternary)', padding: '14px', borderRadius: '12px', borderLeft: `3px solid ${r.rating >= 4 ? 'var(--green)' : 'var(--red)'}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                   <div>

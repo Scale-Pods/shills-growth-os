@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { useAppContext } from '../ClientWrapper';
 import type { Salon, WhatsappLog, EmailLog } from '@/lib/supabase/salonCrm';
@@ -16,6 +16,7 @@ import {
   ArrowUpRight,
   Clock,
 } from 'lucide-react';
+import { isWithinDateRange } from '@/lib/dateRangeFilter';
 
 interface MasterDashboardProps {
   salonCrm: {
@@ -26,19 +27,42 @@ interface MasterDashboardProps {
 }
 
 export default function MasterDashboard({ salonCrm }: MasterDashboardProps) {
-  const { inventory, supportCases, receivables, reviews, contentDrafts } = useAppContext();
+  const { inventory, supportCases, receivables, reviews, contentDrafts, dateRange, dateLabel } = useAppContext();
 
-  // Salon CRM (live)
-  const salonLeadsTotal = salonCrm.salons.length;
-  const salonWon = salonCrm.salons.filter((s) => s.current_stage === 'won').length;
-  const salonActive = salonCrm.salons.filter((s) => s.current_stage !== 'won' && s.current_stage !== 'lost').length;
+  // Salon CRM (live) — filtered by created_at
+  const dateSalons = useMemo(
+    () => salonCrm.salons.filter((s) => isWithinDateRange(s.created_at, dateRange)),
+    [salonCrm.salons, dateRange]
+  );
+  const dateWaLogs = useMemo(
+    () => salonCrm.whatsappLogs.filter((l) => isWithinDateRange(l.created_at, dateRange)),
+    [salonCrm.whatsappLogs, dateRange]
+  );
+  const dateEmailLogs = useMemo(
+    () => salonCrm.emailLogs.filter((l) => isWithinDateRange(l.created_at, dateRange)),
+    [salonCrm.emailLogs, dateRange]
+  );
+
+  const salonLeadsTotal = dateSalons.length;
+  const salonWon = dateSalons.filter((s) => s.current_stage === 'won').length;
+  const salonActive = dateSalons.filter((s) => s.current_stage !== 'won' && s.current_stage !== 'lost').length;
   const salonPositiveSignals =
-    salonCrm.whatsappLogs.filter((l) => l.interest === 'positive').length +
-    salonCrm.emailLogs.filter((l) => l.interest === 'positive').length;
+    dateWaLogs.filter((l) => l.interest === 'positive').length +
+    dateEmailLogs.filter((l) => l.interest === 'positive').length;
 
-  // Receivables (mock)
-  const totalOutstanding = receivables.reduce((acc, r) => acc + r.outstanding, 0);
-  const overdueCount = receivables.filter((r) => r.overdueDays > 0).length;
+  // Receivables (mock) — filtered by invoice date, since that's the only real date field present
+  const dateReceivables = useMemo(
+    () =>
+      receivables
+        .map((r) => ({
+          ...r,
+          invoices: r.invoices.filter((inv) => isWithinDateRange(inv.date, dateRange)),
+        }))
+        .filter((r) => dateRange?.from || dateRange?.to ? r.invoices.length > 0 : true),
+    [receivables, dateRange]
+  );
+  const totalOutstanding = dateReceivables.reduce((acc, r) => acc + r.outstanding, 0);
+  const overdueCount = dateReceivables.filter((r) => r.overdueDays > 0).length;
 
   // Inventory (mock)
   const lowStockCount = inventory.filter((p) => {
@@ -117,11 +141,13 @@ export default function MasterDashboard({ salonCrm }: MasterDashboardProps) {
 
   return (
     <div style={{ animation: 'fadeIn 300ms ease' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>Master Dashboard</h2>
-        <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
-          Combined metrics across every channel. Pick a channel below to drill in.
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>Master Dashboard</h2>
+          <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
+            Combined metrics across every channel. Pick a channel below to drill in.
+          </p>
+        </div>
       </div>
 
       <div className="metrics-grid mb-24">

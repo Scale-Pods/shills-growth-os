@@ -44,8 +44,35 @@ export interface Salon {
   conversation_transcript: TranscriptEntry[];
   conversation_transcript_email: TranscriptEntry[];
   last_reply_at: string | null;
+  whatsapp_sentiment: string | null;
+  email_sentiment: string | null;
+  whatsapp_last_reply_at: string | null;
+  email_last_reply_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface OutreachSequence {
+  id: string;
+  salon_id: string;
+  outreach_step: string;
+  channel: 'whatsapp' | 'email' | 'call' | 'system';
+  scheduled_date: string;
+  status: string;
+  executed_at: string | null;
+  n8n_execution_id: string | null;
+  created_at: string;
+}
+
+/** Parses "positive - wants_sample - Salon owner reversed initial rejection..." into parts. */
+export function parseSentiment(value: string | null): { interest: string | null; intent: string | null; summary: string | null } {
+  if (!value) return { interest: null, intent: null, summary: null };
+  const parts = value.split(' - ');
+  return {
+    interest: parts[0]?.trim().toLowerCase() ?? null,
+    intent: parts[1]?.trim() ?? null,
+    summary: parts.slice(2).join(' - ').trim() || null,
+  };
 }
 
 export interface WhatsappLog {

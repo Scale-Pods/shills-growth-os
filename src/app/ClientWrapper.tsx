@@ -35,6 +35,8 @@ import {
   Phone,
   Check
 } from 'lucide-react';
+import { DateRangePicker, type DateRange } from '@/components/shared/DateRangePicker';
+import { subDays, startOfDay, endOfDay } from 'date-fns';
 
 // Interfaces for our state elements to ensure type safety
 interface Invoice {
@@ -144,6 +146,10 @@ interface AppContextProps {
   setTheme: React.Dispatch<React.SetStateAction<string>>;
   dateFilter: string;
   setDateFilter: React.Dispatch<React.SetStateAction<string>>;
+  dateRange: DateRange | undefined;
+  setDateRange: React.Dispatch<React.SetStateAction<DateRange | undefined>>;
+  dateLabel: string | undefined;
+  setDateLabel: React.Dispatch<React.SetStateAction<string | undefined>>;
   toasts: Toast[];
   showToast: (message: string, type?: string) => void;
   spotlightOpen: boolean;
@@ -409,6 +415,11 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
   const [loginPassword, setLoginPassword] = useState('admin123');
   const [theme, setTheme] = useState('dark'); 
   const [dateFilter, setDateFilter] = useState('30d');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => ({
+    from: startOfDay(subDays(new Date(), 7)),
+    to: endOfDay(new Date()),
+  }));
+  const [dateLabel, setDateLabel] = useState<string | undefined>('Last 7 days');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   
@@ -545,6 +556,10 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
         setTheme,
         dateFilter,
         setDateFilter,
+        dateRange,
+        setDateRange,
+        dateLabel,
+        setDateLabel,
         toasts,
         showToast,
         spotlightOpen,
@@ -827,9 +842,6 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                         return lastSegment.replace(/-/g, ' ');
                       })()}
                     </span>
-                    <span style={{ fontSize: '10px', background: 'rgba(0, 122, 255, 0.08)', color: 'var(--blue)', border: '1px solid rgba(0, 122, 255, 0.15)', padding: '2px 8px', borderRadius: '12px', fontWeight: '600', marginLeft: '8px' }}>
-                      Powered by ScalePods
-                    </span>
                   </div>
                 </div>
 
@@ -845,38 +857,14 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--label-secondary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0, 122, 255, 0.08)', padding: '4px 10px', borderRadius: '12px', border: '1px solid rgba(0, 122, 255, 0.15)' }}>
-                    Powered by <span style={{ color: 'var(--blue)', fontWeight: '700' }}>ScalePods</span>
-                  </div>
-                  <div className="badge badge-live"><span>Live API Sync</span></div>
-                  
-                  <div className="date-selector-wrapper">
-                    <Calendar size={14} />
-                    <select
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
-                      className="header-select"
-                    >
-                      <option value="today">Today</option>
-                      <option value="7d">Last 7 Days</option>
-                      <option value="30d">Last 30 Days</option>
-                      <option value="ytd">Year to Date</option>
-                    </select>
-                  </div>
-
-                  <button
-                    className="btn-icon header-btn"
-                    onClick={() => showToast('Syncing all modules with Shopify, Amazon, Blinkit, and Myntra API gateways...', 'info')}
-                    title="Notifications"
-                    style={{ background: 'transparent', border: 'none', color: 'var(--label-secondary)', cursor: 'pointer', position: 'relative' }}
-                  >
-                    <Bell size={14} />
-                    <span className="notification-indicator"></span>
-                  </button>
-
-                  <div className="system-status-indicator" title="All storefront channels active">
-                    <CheckCircle size={18} className="status-success-icon" style={{ color: 'var(--green)' }} />
-                  </div>
+                  <DateRangePicker
+                    value={dateRange}
+                    label={dateLabel}
+                    onUpdate={({ range, label }) => {
+                      setDateRange(range);
+                      setDateLabel(label);
+                    }}
+                  />
                 </div>
               </header>
 

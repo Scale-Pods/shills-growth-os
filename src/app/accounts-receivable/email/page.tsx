@@ -1,17 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../../ClientWrapper';
 import { Mail, X } from 'lucide-react';
+import { isWithinDateRange } from '@/lib/dateRangeFilter';
 
 export default function ReceivablesEmailPage() {
-  const { receivables, setReceivables, showToast } = useAppContext();
+  const { receivables, setReceivables, showToast, dateRange, dateLabel } = useAppContext();
   const [showModal, setShowModal] = useState(false);
   const [activeId, setActiveId] = useState('');
   const [loading, setLoading] = useState(false);
   const [transcript, setTranscript] = useState('');
 
-  const overdue = receivables.filter((r) => r.overdueDays > 0);
+  const dateReceivables = useMemo(
+    () =>
+      receivables
+        .map((r) => ({ ...r, invoices: r.invoices.filter((inv) => isWithinDateRange(inv.date, dateRange)) }))
+        .filter((r) => (dateRange?.from || dateRange?.to ? r.invoices.length > 0 : true)),
+    [receivables, dateRange]
+  );
+
+  const overdue = dateReceivables.filter((r) => r.overdueDays > 0);
   const activeRetailer = receivables.find((r) => r.id === activeId) || overdue[0];
 
   const openOutreach = (retailerId: string) => {
@@ -45,11 +54,13 @@ export default function ReceivablesEmailPage() {
 
   return (
     <div style={{ animation: 'fadeIn 300ms ease' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>Receivables — Email Panel</h2>
-        <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
-          Trigger and review formal email reminders for overdue retailer accounts.
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>Receivables — Email Panel</h2>
+          <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
+            Trigger and review formal email reminders for overdue retailer accounts.
+          </p>
+        </div>
       </div>
 
       <div className="liquid-card" style={{ padding: '24px' }}>

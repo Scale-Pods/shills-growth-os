@@ -1,16 +1,22 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { useAppContext } from '../../ClientWrapper';
 import type { Salon } from '@/lib/supabase/salonCrm';
 import { normalizeTranscript } from '@/lib/supabase/transcript';
 import { MessageSquare, ArrowDownLeft, ArrowUpRight, Search } from 'lucide-react';
+import { isWithinDateRange } from '@/lib/dateRangeFilter';
 
 export default function WhatsappPanel({ salons }: { salons: Salon[] }) {
+  const { dateRange, dateLabel } = useAppContext();
   const [search, setSearch] = useState('');
 
   const conversations = useMemo(() => {
     return salons
-      .map((s) => ({ salon: s, entries: normalizeTranscript(s.conversation_transcript) }))
+      .map((s) => ({
+        salon: s,
+        entries: normalizeTranscript(s.conversation_transcript).filter((e) => isWithinDateRange(e.at, dateRange)),
+      }))
       .filter((c) => c.entries.length > 0)
       .map((c) => ({
         salon: c.salon,
@@ -22,22 +28,27 @@ export default function WhatsappPanel({ salons }: { salons: Salon[] }) {
         const bLast = b.entries[b.entries.length - 1]?.at ?? '';
         return new Date(bLast).getTime() - new Date(aLast).getTime();
       });
-  }, [salons, search]);
+  }, [salons, search, dateRange]);
 
   const [selectedSalonId, setSelectedSalonId] = useState<string | null>(null);
   const activeThread = conversations.find((c) => c.salon.id === selectedSalonId) ?? conversations[0];
 
-  const allEntries = useMemo(() => salons.flatMap((s) => normalizeTranscript(s.conversation_transcript)), [salons]);
+  const allEntries = useMemo(
+    () => salons.flatMap((s) => normalizeTranscript(s.conversation_transcript)).filter((e) => isWithinDateRange(e.at, dateRange)),
+    [salons, dateRange]
+  );
   const inboundCount = allEntries.filter((e) => e.direction === 'inbound').length;
   const outboundCount = allEntries.filter((e) => e.direction === 'outbound').length;
 
   return (
     <div style={{ animation: 'fadeIn 300ms ease' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>WhatsApp Panel</h2>
-        <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
-          Live conversation threads from salons.conversation_transcript — the full running WhatsApp thread per salon.
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>WhatsApp Panel</h2>
+          <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
+            Live conversation threads from salons.conversation_transcript — the full running WhatsApp thread per salon.
+          </p>
+        </div>
       </div>
 
       <div className="metrics-grid mb-24">
