@@ -1,5 +1,13 @@
-import { MessageSquare, Mail, MapPin, Building2, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { MessageSquare, Mail, MapPin, Building2, ArrowDownLeft, ArrowUpRight, Sparkles } from 'lucide-react';
 import type { Salon, TranscriptEntry } from '@/lib/supabase/salonCrm';
+import { parseSentiment } from '@/lib/supabase/salonCrm';
+
+const INTEREST_COLOR: Record<string, string> = {
+  positive: '#34C759',
+  neutral: '#FF9F0A',
+  negative: '#FF3B30',
+  not_interested: '#FF3B30',
+};
 
 export default function SharedChatCard({
   channel,
@@ -15,47 +23,82 @@ export default function SharedChatCard({
   const inboundCount = entries.filter((e) => e.direction === 'inbound').length;
   const outboundCount = entries.filter((e) => e.direction === 'outbound').length;
 
+  const sentimentRaw = channel === 'whatsapp' ? salon.whatsapp_sentiment : salon.email_sentiment;
+  const sentiment = parseSentiment(sentimentRaw);
+  const sentimentColor = (sentiment.interest && INTEREST_COLOR[sentiment.interest]) || '#8E8E93';
+
   return (
     <div
       style={{
-        minHeight: '100vh',
+        height: '100vh',
         background: '#0a0a0c',
         color: '#f5f5f7',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        padding: '32px 16px',
         display: 'flex',
         justifyContent: 'center',
+        overflow: 'hidden',
+        padding: '24px 16px',
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ width: '100%', maxWidth: '720px' }}>
+      <div style={{ width: '100%', maxWidth: '720px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {/* Header card */}
         <div
           style={{
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: '20px',
-            padding: '24px',
-            marginBottom: '20px',
+            padding: '20px 24px',
+            marginBottom: '16px',
+            flexShrink: 0,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-            <div
-              style={{
-                background: `${accentColor}22`,
-                color: accentColor,
-                padding: '10px',
-                borderRadius: '12px',
-                display: 'flex',
-              }}
-            >
-              <Icon size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: accentColor }}>
-                {channel === 'whatsapp' ? 'WhatsApp Conversation' : 'Email Conversation'}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+              <div
+                style={{
+                  background: `${accentColor}22`,
+                  color: accentColor,
+                  padding: '10px',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon size={20} />
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 700 }}>{salon.salon_name}</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: accentColor }}>
+                  {channel === 'whatsapp' ? 'WhatsApp Conversation' : 'Email Conversation'}
+                </div>
+                <div style={{ fontSize: '19px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {salon.salon_name}
+                </div>
+              </div>
             </div>
+
+            {sentiment.interest && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: `${sentimentColor}1a`,
+                  border: `1px solid ${sentimentColor}40`,
+                  color: sentimentColor,
+                  padding: '5px 10px',
+                  borderRadius: '10px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  textTransform: 'capitalize',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+                title={sentiment.summary ?? undefined}
+              >
+                <Sparkles size={11} /> {sentiment.interest.replace(/_/g, ' ')}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '12.5px', color: 'rgba(255,255,255,0.6)' }}>
@@ -77,7 +120,14 @@ export default function SharedChatCard({
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '16px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          {sentiment.summary && (
+            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.55)', margin: '10px 0 0', lineHeight: 1.5, fontStyle: 'italic' }}>
+              &ldquo;{sentiment.summary}&rdquo;
+              {sentiment.intent && <span style={{ color: 'rgba(255,255,255,0.35)' }}> · intent: {sentiment.intent.replace(/_/g, ' ')}</span>}
+            </p>
+          )}
+
+          <div style={{ display: 'flex', gap: '16px', marginTop: '14px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <ArrowDownLeft size={12} /> {inboundCount} received
             </span>
@@ -88,13 +138,16 @@ export default function SharedChatCard({
           </div>
         </div>
 
-        {/* Chat thread */}
+        {/* Chat thread — the only scrollable region */}
         <div
           style={{
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: '20px',
-            padding: '24px',
+            padding: '20px 24px',
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
           }}
         >
           {entries.length === 0 ? (
@@ -146,7 +199,7 @@ export default function SharedChatCard({
           )}
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>
+        <div style={{ textAlign: 'center', marginTop: '14px', fontSize: '11px', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
           Shared read-only view · Shills Growth OS
         </div>
       </div>
