@@ -385,6 +385,7 @@ function workspaceForPath(pathname: string | null): Workspace {
 export function ClientWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const isPublicSharePage = pathname?.startsWith('/share/') ?? false;
 
   // App Global States
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -535,6 +536,12 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
     router.push(item.target);
     showToast(`Navigated to ${item.text}`, 'success');
   };
+
+  // Public, unauthenticated share pages render standalone — no login gate,
+  // no app shell/sidebar, no mount-loading spinner.
+  if (isPublicSharePage) {
+    return <>{children}</>;
+  }
 
   if (!hasMounted) {
     return (

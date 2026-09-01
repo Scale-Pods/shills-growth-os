@@ -4,12 +4,21 @@ import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../../ClientWrapper';
 import type { Salon } from '@/lib/supabase/salonCrm';
 import { normalizeTranscript } from '@/lib/supabase/transcript';
-import { Mail, ArrowDownLeft, ArrowUpRight, Search } from 'lucide-react';
+import { Mail, ArrowDownLeft, ArrowUpRight, Search, Link2, Check } from 'lucide-react';
 import { isWithinDateRange } from '@/lib/dateRangeFilter';
 
 export default function EmailPanel({ salons }: { salons: Salon[] }) {
-  const { dateRange, dateLabel } = useAppContext();
+  const { dateRange, dateLabel, showToast } = useAppContext();
   const [search, setSearch] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyShareLink = (email: string, salonId: string) => {
+    const url = `${window.location.origin}/share/email/${encodeURIComponent(email)}`;
+    navigator.clipboard.writeText(url);
+    setCopiedId(salonId);
+    showToast('Public share link copied to clipboard.', 'success');
+    setTimeout(() => setCopiedId((id) => (id === salonId ? null : id)), 2000);
+  };
 
   const threads = useMemo(() => {
     return salons
@@ -114,7 +123,19 @@ export default function EmailPanel({ salons }: { salons: Salon[] }) {
             <div style={{ textAlign: 'center', color: 'var(--label-tertiary)', padding: '60px 0' }}>Select a thread.</div>
           ) : (
             <>
-              <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px' }}>{activeThread.salon.salon_name}</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '8px' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0 }}>{activeThread.salon.salon_name}</h3>
+                {activeThread.salon.email && (
+                  <button
+                    className="btn-secondary"
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px', flexShrink: 0 }}
+                    onClick={() => copyShareLink(activeThread.salon.email!, activeThread.salon.id)}
+                  >
+                    {copiedId === activeThread.salon.id ? <Check size={13} style={{ color: 'var(--green)' }} /> : <Link2 size={13} />}
+                    {copiedId === activeThread.salon.id ? 'Copied' : 'Copy Public Share Link'}
+                  </button>
+                )}
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '520px', overflowY: 'auto' }}>
                 {activeThread.entries.map((entry, idx) => (
                   <div
