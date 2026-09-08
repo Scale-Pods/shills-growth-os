@@ -515,6 +515,24 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
   const isPublicSharePage =
     (pathname?.startsWith('/share/') ?? false) || pathname === '/reset-password';
 
+  // A Supabase password-reset link redirects to the Site URL ("/") with the
+  // token in the URL hash. Catch that anywhere and forward to /reset-password,
+  // carrying the hash, so the reset works even if the Supabase redirect URL
+  // still points at the site root.
+  const [authHashRedirecting, setAuthHashRedirecting] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash || '';
+    if (
+      pathname !== '/reset-password' &&
+      /[#&]access_token=/.test(hash) &&
+      /[#&]type=(recovery|magiclink|signup)/.test(hash)
+    ) {
+      setAuthHashRedirecting(true);
+      window.location.replace('/reset-password' + hash);
+    }
+  }, [pathname]);
+
   // App Global States
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
@@ -776,6 +794,12 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
   // no app shell/sidebar, no mount-loading spinner.
   if (isPublicSharePage) {
     return <>{children}</>;
+  }
+
+  // Forwarding a Supabase auth-hash link to /reset-password — show nothing
+  // so the login page doesn't flash.
+  if (authHashRedirecting) {
+    return <div style={{ minHeight: '100vh', background: '#0a0a0c' }} />;
   }
 
   if (!hasMounted) {
