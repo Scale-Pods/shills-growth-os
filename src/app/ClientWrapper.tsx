@@ -616,6 +616,40 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginBusy, setLoginBusy] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotMsg, setForgotMsg] = useState<string | null>(null);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+
+  // "Forgot password?" — email a Supabase reset link that lands on /reset-password.
+  const sendResetLink = async () => {
+    setForgotError(null);
+    setForgotMsg(null);
+    const email = forgotEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setForgotError('Enter a valid email address.');
+      return;
+    }
+    setForgotBusy(true);
+    try {
+      const res = await fetch('/api/auth/forgot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setForgotError(data?.error || 'Could not send the reset email.');
+        return;
+      }
+      setForgotMsg(data?.message || 'If that email is registered, a reset link is on its way.');
+    } catch {
+      setForgotError('Network error — please try again.');
+    } finally {
+      setForgotBusy(false);
+    }
+  };
 
   // Performs the real login against /api/auth/login (salon_crm users table).
   const doLogin = async () => {
@@ -1331,12 +1365,51 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                         {loginBusy ? 'Signing in…' : 'Sign In'}
                       </button>
 
-                      <a
-                        href="/reset-password"
-                        style={{ textAlign: 'center', fontSize: '12px', color: 'var(--blue)', textDecoration: 'none', marginTop: '2px' }}
-                      >
-                        Forgot password?
-                      </a>
+                      {!forgotOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => { setForgotOpen(true); setForgotEmail(loginEmail); }}
+                          style={{ background: 'none', border: 'none', textAlign: 'center', fontSize: '12px', color: 'var(--blue)', cursor: 'pointer', marginTop: '2px' }}
+                        >
+                          Forgot password?
+                        </button>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px', padding: '12px', borderRadius: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--label-secondary)', fontWeight: 600 }}>
+                            We&apos;ll email you a link to set a new password.
+                          </span>
+                          <input
+                            type="email"
+                            placeholder="Account email"
+                            value={forgotEmail}
+                            onChange={(e) => { setForgotEmail(e.target.value); setForgotError(null); setForgotMsg(null); }}
+                            style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', fontSize: '13px', background: 'rgba(0,0,0,0.25)', color: '#fff' }}
+                          />
+                          {forgotError && (
+                            <span style={{ fontSize: '11px', color: 'var(--red)' }}>{forgotError}</span>
+                          )}
+                          {forgotMsg && (
+                            <span style={{ fontSize: '11px', color: 'var(--green)' }}>{forgotMsg}</span>
+                          )}
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={sendResetLink}
+                              disabled={forgotBusy}
+                              style={{ flex: 1, padding: '9px', borderRadius: '10px', border: 'none', background: 'var(--blue)', color: '#fff', fontWeight: 700, fontSize: '12.5px', cursor: forgotBusy ? 'wait' : 'pointer', opacity: forgotBusy ? 0.7 : 1 }}
+                            >
+                              {forgotBusy ? 'Sending…' : 'Send reset link'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setForgotOpen(false); setForgotError(null); setForgotMsg(null); }}
+                              style={{ padding: '9px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'var(--label-secondary)', fontSize: '12.5px', cursor: 'pointer' }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </form>
 
                     <div style={{ textAlign: 'center', fontSize: '10.5px', color: 'var(--label-tertiary)', marginTop: '16px' }}>
