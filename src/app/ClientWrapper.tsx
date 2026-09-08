@@ -33,7 +33,11 @@ import {
   MessageSquare,
   Mail,
   Phone,
-  Check
+  Check,
+  UploadCloud,
+  Send,
+  Inbox,
+  BarChart3
 } from 'lucide-react';
 import { DateRangePicker, type DateRange } from '@/components/shared/DateRangePicker';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
@@ -355,16 +359,75 @@ const WORKSPACES: Workspace[] = [
         items: [{ href: '/accounts-receivable/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
       },
       {
+        label: 'Invoices',
+        items: [{ href: '/accounts-receivable/upload-invoice', label: 'Upload Invoice', icon: UploadCloud }],
+      },
+      {
         label: 'Channels',
         items: [
-          { href: '/accounts-receivable/whatsapp', label: 'WhatsApp Panel', icon: MessageSquare },
-          { href: '/accounts-receivable/email', label: 'Email Panel', icon: Mail },
+          { href: '/accounts-receivable/whatsapp', label: 'WhatsApp', icon: MessageSquare },
+          { href: '/accounts-receivable/email', label: 'Email', icon: Mail },
           { href: '/accounts-receivable/voice', label: 'Voice Panel', icon: Phone },
         ],
       },
     ],
   },
 ];
+
+// Channel sub-navs for Receivables — the sidebar swaps to these while the
+// user is inside /accounts-receivable/email/* or /accounts-receivable/whatsapp/*.
+const RECEIVABLES_EMAIL_SECTIONS: WorkspaceSection[] = [
+  {
+    label: 'Email',
+    items: [
+      { href: '/accounts-receivable/email/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/accounts-receivable/email/sent', label: 'Sent', icon: Send },
+      { href: '/accounts-receivable/email/received', label: 'Received', icon: Inbox },
+      { href: '/accounts-receivable/email/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Receivables',
+    items: [
+      { href: '/accounts-receivable/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
+      { href: '/accounts-receivable/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
+      { href: '/accounts-receivable/voice', label: 'Voice Panel', icon: Phone },
+    ],
+  },
+];
+
+const RECEIVABLES_WHATSAPP_SECTIONS: WorkspaceSection[] = [
+  {
+    label: 'WhatsApp',
+    items: [
+      { href: '/accounts-receivable/whatsapp/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/accounts-receivable/whatsapp/chats', label: 'Chats', icon: MessageSquare },
+      { href: '/accounts-receivable/whatsapp/leads', label: 'Leads', icon: Users },
+      { href: '/accounts-receivable/whatsapp/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Receivables',
+    items: [
+      { href: '/accounts-receivable/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
+      { href: '/accounts-receivable/email/dashboard', label: 'Email', icon: Mail },
+      { href: '/accounts-receivable/voice', label: 'Voice Panel', icon: Phone },
+    ],
+  },
+];
+
+/** Returns the workspace for a path, with Receivables channel sub-navs swapped in. */
+function resolveWorkspace(pathname: string | null): Workspace {
+  const base = workspaceForPath(pathname);
+  if (base.id !== 'receivables' || !pathname) return base;
+  if (pathname.startsWith('/accounts-receivable/email')) {
+    return { ...base, sections: RECEIVABLES_EMAIL_SECTIONS };
+  }
+  if (pathname.startsWith('/accounts-receivable/whatsapp')) {
+    return { ...base, sections: RECEIVABLES_WHATSAPP_SECTIONS };
+  }
+  return base;
+}
 
 function workspaceForPath(pathname: string | null): Workspace {
   if (!pathname) return WORKSPACES[0];
@@ -391,7 +454,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
-  const activeWorkspace = workspaceForPath(pathname);
+  const activeWorkspace = resolveWorkspace(pathname);
 
   // Close the workspace dropdown whenever the route changes.
   useEffect(() => {
@@ -522,8 +585,15 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
     { text: 'Go to Salon CRM: WhatsApp', type: 'navigation', target: '/salon-crm/whatsapp', shortcut: '' },
     { text: 'Go to Salon CRM: Email', type: 'navigation', target: '/salon-crm/email', shortcut: '' },
     { text: 'Go to Receivables: Dashboard', type: 'navigation', target: '/accounts-receivable/dashboard', shortcut: '⌘6' },
-    { text: 'Go to Receivables: WhatsApp Panel', type: 'navigation', target: '/accounts-receivable/whatsapp', shortcut: '' },
-    { text: 'Go to Receivables: Email Panel', type: 'navigation', target: '/accounts-receivable/email', shortcut: '' },
+    { text: 'Go to Receivables: Upload Invoice', type: 'navigation', target: '/accounts-receivable/upload-invoice', shortcut: '' },
+    { text: 'Go to Receivables: WhatsApp Dashboard', type: 'navigation', target: '/accounts-receivable/whatsapp/dashboard', shortcut: '' },
+    { text: 'Go to Receivables: WhatsApp Chats', type: 'navigation', target: '/accounts-receivable/whatsapp/chats', shortcut: '' },
+    { text: 'Go to Receivables: WhatsApp Leads', type: 'navigation', target: '/accounts-receivable/whatsapp/leads', shortcut: '' },
+    { text: 'Go to Receivables: WhatsApp Analytics', type: 'navigation', target: '/accounts-receivable/whatsapp/analytics', shortcut: '' },
+    { text: 'Go to Receivables: Email Dashboard', type: 'navigation', target: '/accounts-receivable/email/dashboard', shortcut: '' },
+    { text: 'Go to Receivables: Email Sent', type: 'navigation', target: '/accounts-receivable/email/sent', shortcut: '' },
+    { text: 'Go to Receivables: Email Received', type: 'navigation', target: '/accounts-receivable/email/received', shortcut: '' },
+    { text: 'Go to Receivables: Email Analytics', type: 'navigation', target: '/accounts-receivable/email/analytics', shortcut: '' },
     { text: 'Go to Receivables: Voice Panel', type: 'navigation', target: '/accounts-receivable/voice', shortcut: '' },
   ];
 

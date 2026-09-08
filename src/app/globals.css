@@ -641,8 +641,15 @@ body {
    ========================================================================== */
 .content-body {
   flex-grow: 1;
+  min-height: 0;
   padding: 24px;
-  overflow-y: auto;
+  overflow-y: scroll;
+  /* Always reserve the scrollbar gutter. Without this, pages whose content
+     sits within a few px of the viewport height oscillate the vertical
+     scrollbar on/off; each toggle changes the content width, which reflows
+     any `repeat(auto-fit, minmax())` grid and changes the height again —
+     a feedback loop that reads as the whole page randomly "jumping up". */
+  scrollbar-gutter: stable;
   position: relative;
   z-index: 2;
 }
