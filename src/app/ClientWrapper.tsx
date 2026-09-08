@@ -180,6 +180,19 @@ interface AppContextProps {
   setWhatsappAlerts: React.Dispatch<React.SetStateAction<WhatsappAlert[]>>;
 }
 
+// Hard session lifetime. 30 minutes after sign-in the user is logged out and
+// must authenticate again (security: an unattended tab can't stay open).
+const SESSION_MAX_MS = 30 * 60 * 1000;
+
+/** "ScalePods Admin" -> "SA", "info@scalepods.co" -> "IN". */
+function initialsFromName(value: string): string {
+  const name = value.includes('@') ? value.split('@')[0] : value;
+  const parts = name.trim().split(/[\s._-]+/).filter(Boolean);
+  if (parts.length === 0) return 'U';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 // Create Global Context with default undefined state
 const AppContext = createContext<AppContextProps | undefined>(undefined);
 
@@ -337,8 +350,8 @@ const WORKSPACES: Workspace[] = [
       {
         label: 'Channels',
         items: [
-          { href: '/salon-crm/whatsapp', label: 'WhatsApp', icon: MessageSquare },
-          { href: '/salon-crm/email', label: 'Email', icon: Mail },
+          { href: '/salon-crm/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
+          { href: '/salon-crm/email/dashboard', label: 'Email', icon: Mail },
         ],
       },
       {
@@ -416,15 +429,66 @@ const RECEIVABLES_WHATSAPP_SECTIONS: WorkspaceSection[] = [
   },
 ];
 
-/** Returns the workspace for a path, with Receivables channel sub-navs swapped in. */
+// Channel sub-navs for Salon CRM — swapped in while inside
+// /salon-crm/email/* or /salon-crm/whatsapp/*.
+const SALON_CRM_EMAIL_SECTIONS: WorkspaceSection[] = [
+  {
+    label: 'Email',
+    items: [
+      { href: '/salon-crm/email/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/salon-crm/email/inbox', label: 'Inbox', icon: Inbox },
+      { href: '/salon-crm/email/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Salon CRM',
+    items: [
+      { href: '/salon-crm/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
+      { href: '/salon-crm/leads', label: 'Leads', icon: Users },
+      { href: '/salon-crm/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
+    ],
+  },
+];
+
+const SALON_CRM_WHATSAPP_SECTIONS: WorkspaceSection[] = [
+  {
+    label: 'WhatsApp',
+    items: [
+      { href: '/salon-crm/whatsapp/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/salon-crm/whatsapp/chats', label: 'Chats', icon: MessageSquare },
+      { href: '/salon-crm/whatsapp/leads', label: 'Leads', icon: Users },
+      { href: '/salon-crm/whatsapp/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Salon CRM',
+    items: [
+      { href: '/salon-crm/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
+      { href: '/salon-crm/leads', label: 'Leads', icon: Users },
+      { href: '/salon-crm/email/dashboard', label: 'Email', icon: Mail },
+    ],
+  },
+];
+
+/** Returns the workspace for a path, with channel sub-navs swapped in. */
 function resolveWorkspace(pathname: string | null): Workspace {
   const base = workspaceForPath(pathname);
-  if (base.id !== 'receivables' || !pathname) return base;
-  if (pathname.startsWith('/accounts-receivable/email')) {
-    return { ...base, sections: RECEIVABLES_EMAIL_SECTIONS };
+  if (!pathname) return base;
+  if (base.id === 'receivables') {
+    if (pathname.startsWith('/accounts-receivable/email')) {
+      return { ...base, sections: RECEIVABLES_EMAIL_SECTIONS };
+    }
+    if (pathname.startsWith('/accounts-receivable/whatsapp')) {
+      return { ...base, sections: RECEIVABLES_WHATSAPP_SECTIONS };
+    }
   }
-  if (pathname.startsWith('/accounts-receivable/whatsapp')) {
-    return { ...base, sections: RECEIVABLES_WHATSAPP_SECTIONS };
+  if (base.id === 'salon-crm') {
+    if (pathname.startsWith('/salon-crm/email')) {
+      return { ...base, sections: SALON_CRM_EMAIL_SECTIONS };
+    }
+    if (pathname.startsWith('/salon-crm/whatsapp')) {
+      return { ...base, sections: SALON_CRM_WHATSAPP_SECTIONS };
+    }
   }
   return base;
 }
@@ -448,11 +512,14 @@ function workspaceForPath(pathname: string | null): Workspace {
 export function ClientWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isPublicSharePage = pathname?.startsWith('/share/') ?? false;
+  const isPublicSharePage =
+    (pathname?.startsWith('/share/') ?? false) || pathname === '/reset-password';
 
   // App Global States
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
+  const [sessionExpiredNotice, setSessionExpiredNotice] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const activeWorkspace = resolveWorkspace(pathname);
 
@@ -463,20 +530,113 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem('isLoggedIn');
-    if (saved === 'true') {
+    const loginAt = Number(localStorage.getItem('loginAt') || '0');
+    const sessionValid = saved === 'true' && loginAt > 0 && Date.now() - loginAt < SESSION_MAX_MS;
+    if (sessionValid) {
       setIsLoggedIn(true);
+      try {
+        const stored = JSON.parse(localStorage.getItem('authUser') || 'null');
+        if (stored?.email) setCurrentUser(stored);
+      } catch {
+        /* ignore */
+      }
+    } else if (saved === 'true') {
+      // Session on record but expired — clear it so the login gate shows.
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('loginAt');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
+      localStorage.setItem('sessionExpired', '1');
+    }
+    if (localStorage.getItem('sessionExpired') === '1') {
+      setSessionExpiredNotice(true);
     }
     setHasMounted(true);
   }, []);
 
   useEffect(() => {
-    if (hasMounted) {
-      localStorage.setItem('isLoggedIn', String(isLoggedIn));
+    if (!hasMounted) return;
+    localStorage.setItem('isLoggedIn', String(isLoggedIn));
+    if (!isLoggedIn) {
+      localStorage.removeItem('loginAt');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authUser');
+      setCurrentUser(null);
     }
   }, [isLoggedIn, hasMounted]);
 
-  const [loginEmail, setLoginEmail] = useState('apoorv@shillsbeauty.com');
-  const [loginPassword, setLoginPassword] = useState('admin123');
+  // Auto-logout 30 minutes after the session started. Checks on an interval
+  // and when the tab regains focus, so a backgrounded tab still expires.
+  useEffect(() => {
+    if (!hasMounted || !isLoggedIn) return;
+
+    const enforce = () => {
+      const loginAt = Number(localStorage.getItem('loginAt') || '0');
+      if (!loginAt || Date.now() - loginAt >= SESSION_MAX_MS) {
+        setIsLoggedIn(false);
+        setSessionExpiredNotice(true);
+        localStorage.removeItem('loginAt');
+        localStorage.removeItem('authToken');
+        localStorage.setItem('isLoggedIn', 'false');
+        localStorage.setItem('sessionExpired', '1');
+        fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+        router.push('/');
+      }
+    };
+
+    const id = window.setInterval(enforce, 30_000);
+    window.addEventListener('focus', enforce);
+    document.addEventListener('visibilitychange', enforce);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('focus', enforce);
+      document.removeEventListener('visibilitychange', enforce);
+    };
+  }, [isLoggedIn, hasMounted, router]);
+
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginBusy, setLoginBusy] = useState(false);
+
+  // Performs the real login against /api/auth/login (salon_crm users table).
+  const doLogin = async () => {
+    setLoginError(null);
+    setLoginBusy(true);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail.trim(), password: loginPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setLoginError(data?.error || 'Sign in failed.');
+        return;
+      }
+      localStorage.setItem('sessionExpired', '0');
+      localStorage.removeItem('sessionExpired');
+      localStorage.setItem('loginAt', String(Date.now()));
+      if (data?.token) localStorage.setItem('authToken', data.token);
+      const u = {
+        name: (data?.user?.name as string) || (data?.user?.email as string) || loginEmail.trim(),
+        email: (data?.user?.email as string) || loginEmail.trim(),
+      };
+      localStorage.setItem('authUser', JSON.stringify(u));
+      setCurrentUser(u);
+      setSessionExpiredNotice(false);
+      setLoginPassword('');
+      setIsLoggedIn(true);
+      setTheme('dark');
+      if (pathname === '/') router.push('/master');
+      showToast('Signed in to Shills Growth OS.', 'success');
+    } catch {
+      setLoginError('Network error — please try again.');
+    } finally {
+      setLoginBusy(false);
+    }
+  };
+
   const [theme, setTheme] = useState('dark'); 
   const [dateFilter, setDateFilter] = useState('30d');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => ({
@@ -582,8 +742,13 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
     { text: 'Go to Salon CRM: Dashboard', type: 'navigation', target: '/salon-crm/dashboard', shortcut: '⌘5' },
     { text: 'Go to Salon CRM: Leads', type: 'navigation', target: '/salon-crm/leads', shortcut: '' },
     { text: 'Go to Salon CRM: Google Maps Scraper', type: 'navigation', target: '/salon-crm/scraper', shortcut: '' },
-    { text: 'Go to Salon CRM: WhatsApp', type: 'navigation', target: '/salon-crm/whatsapp', shortcut: '' },
-    { text: 'Go to Salon CRM: Email', type: 'navigation', target: '/salon-crm/email', shortcut: '' },
+    { text: 'Go to Salon CRM: WhatsApp Dashboard', type: 'navigation', target: '/salon-crm/whatsapp/dashboard', shortcut: '' },
+    { text: 'Go to Salon CRM: WhatsApp Chats', type: 'navigation', target: '/salon-crm/whatsapp/chats', shortcut: '' },
+    { text: 'Go to Salon CRM: WhatsApp Leads', type: 'navigation', target: '/salon-crm/whatsapp/leads', shortcut: '' },
+    { text: 'Go to Salon CRM: WhatsApp Analytics', type: 'navigation', target: '/salon-crm/whatsapp/analytics', shortcut: '' },
+    { text: 'Go to Salon CRM: Email Dashboard', type: 'navigation', target: '/salon-crm/email/dashboard', shortcut: '' },
+    { text: 'Go to Salon CRM: Email Inbox', type: 'navigation', target: '/salon-crm/email/inbox', shortcut: '' },
+    { text: 'Go to Salon CRM: Email Analytics', type: 'navigation', target: '/salon-crm/email/analytics', shortcut: '' },
     { text: 'Go to Receivables: Dashboard', type: 'navigation', target: '/accounts-receivable/dashboard', shortcut: '⌘6' },
     { text: 'Go to Receivables: Upload Invoice', type: 'navigation', target: '/accounts-receivable/upload-invoice', shortcut: '' },
     { text: 'Go to Receivables: WhatsApp Dashboard', type: 'navigation', target: '/accounts-receivable/whatsapp/dashboard', shortcut: '' },
@@ -851,17 +1016,22 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
 
                 <div className="user-profile">
                   <div className="avatar">
-                    <span>AM</span>
+                    <span>{initialsFromName(currentUser?.name || currentUser?.email || 'User')}</span>
                     <div className="status-indicator online"></div>
                   </div>
                   <div className="user-details">
-                    <span className="user-name">Apoorv Mehta</span>
-                    <span className="user-role">Founder View</span>
+                    <span className="user-name">{currentUser?.name || currentUser?.email || 'Signed in'}</span>
+                    <span className="user-role">{currentUser?.email || 'Operator'}</span>
                   </div>
                   <button
                     className="btn-icon"
                     onClick={() => {
                       setIsLoggedIn(false);
+                      setSessionExpiredNotice(false);
+                      localStorage.removeItem('loginAt');
+                      localStorage.removeItem('authToken');
+                      localStorage.removeItem('sessionExpired');
+                      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
                       router.push('/');
                       showToast('Logged out of Shills Growth OS.', 'info');
                     }}
@@ -973,20 +1143,14 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                   <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }} className="landing-nav-links-desktop">
-                    <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', cursor: 'default' }}>Live Syncing: Shopify • Blinkit • Nykaa • Myntra</span>
+                    <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', cursor: 'default' }}>Live Syncing: Shopify • Blinkit • Myntra</span>
                   </div>
-                  <button
-                    className="btn-nav-signup"
-                    onClick={() => {
-                      setIsLoggedIn(true);
-                      if (pathname === '/') {
-                        router.push('/master');
-                      }
-                    }}
-                    style={{ cursor: 'pointer', background: 'linear-gradient(135deg, var(--blue), var(--purple))', padding: '8px 20px', borderRadius: '20px', border: 'none', color: '#fff', fontSize: '13px', fontWeight: '600', transition: 'all 200ms ease', boxShadow: '0 4px 12px rgba(0, 122, 255, 0.2)' }}
+                  <a
+                    href="#login"
+                    style={{ cursor: 'pointer', background: 'linear-gradient(135deg, var(--blue), var(--purple))', padding: '8px 20px', borderRadius: '20px', border: 'none', color: '#fff', fontSize: '13px', fontWeight: '600', transition: 'all 200ms ease', boxShadow: '0 4px 12px rgba(0, 122, 255, 0.2)', textDecoration: 'none' }}
                   >
-                    Quick Sign In
-                  </button>
+                    Sign In
+                  </a>
                 </div>
               </div>
             </header>
@@ -1047,7 +1211,6 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                       <span style={{ fontSize: '11.5px', padding: '6px 12px', borderRadius: '20px', background: 'rgba(255, 153, 0, 0.1)', border: '1px solid rgba(255, 153, 0, 0.2)', color: '#FF9900', fontWeight: '600' }}>Amazon</span>
                       <span style={{ fontSize: '11.5px', padding: '6px 12px', borderRadius: '20px', background: 'rgba(250, 214, 5, 0.1)', border: '1px solid rgba(250, 214, 5, 0.2)', color: '#FAD605', fontWeight: '600' }}>Blinkit</span>
                       <span style={{ fontSize: '11.5px', padding: '6px 12px', borderRadius: '20px', background: 'rgba(255, 63, 108, 0.1)', border: '1px solid rgba(255, 63, 108, 0.2)', color: '#FF3F6C', fontWeight: '600' }}>Myntra</span>
-                      <span style={{ fontSize: '11.5px', padding: '6px 12px', borderRadius: '20px', background: 'rgba(224, 0, 76, 0.1)', border: '1px solid rgba(224, 0, 76, 0.2)', color: '#E0004C', fontWeight: '600' }}>Nykaa</span>
                     </div>
                   </div>
                 </div>
@@ -1067,71 +1230,93 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                     }}
                   >
                     {/* Header profile */}
-                    <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                    <div id="login" style={{ textAlign: 'center', marginBottom: '24px', scrollMarginTop: '90px' }}>
                       <div style={{ width: '120px', height: '120px', borderRadius: '28px', background: 'rgba(255,255,255,0.03)', border: '1.5px solid rgba(255, 255, 255, 0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
                         <img src="/icon.png" alt="Shills Profile Logo" style={{ width: '96px', height: '96px', objectFit: 'contain' }} />
                       </div>
-                      <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: 0 }}>Authorize Access</h2>
+                      <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: 0 }}>Sign In</h2>
                       <p style={{ fontSize: '12.5px', color: 'var(--label-secondary)', marginTop: '6px', lineHeight: '1.4' }}>
-                        Enter secure credentials to log into Shills OS. <br />
+                        Enter your Shills Growth OS credentials. <br />
                         <span style={{ fontSize: '11px', color: 'var(--blue)', fontWeight: '700', display: 'block', marginTop: '4px' }}>Powered by ScalePods</span>
                       </p>
                     </div>
+
+                    {sessionExpiredNotice && (
+                      <div
+                        style={{
+                          background: 'rgba(255, 149, 0, 0.12)',
+                          border: '1px solid rgba(255, 149, 0, 0.3)',
+                          borderRadius: '12px',
+                          padding: '10px 14px',
+                          marginBottom: '16px',
+                          fontSize: '12px',
+                          color: 'var(--orange, #ff9500)',
+                          textAlign: 'center',
+                        }}
+                      >
+                        Your session expired after 30 minutes. Please sign in again.
+                      </div>
+                    )}
 
                     {/* Form Console */}
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
-                        setIsLoggedIn(true);
-                        if (pathname === '/') {
-                          router.push('/master');
-                        }
-                        setTheme('dark');
-                        showToast('Identity authorized. Initializing Shills Growth OS...', 'success');
+                        if (!loginBusy) doLogin();
                       }}
                       style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
                     >
                       <div>
-                        <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--label-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Security Login Email</label>
+                        <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--label-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</label>
                         <input
                           type="email"
-                          placeholder="apoorv@shillsbeauty.com"
+                          autoComplete="username"
+                          placeholder="you@company.com"
                           value={loginEmail}
-                          onChange={(e) => setLoginEmail(e.target.value)}
+                          onChange={(e) => { setLoginEmail(e.target.value); setLoginError(null); }}
                           style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', fontSize: '13.5px', background: 'rgba(0,0,0,0.2)', color: '#fff', transition: 'border-color 200ms ease' }}
                           required
                         />
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--label-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Secure Password Token</label>
+                        <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--label-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
                         <input
                           type="password"
-                          placeholder="Security Token"
+                          autoComplete="current-password"
+                          placeholder="••••••••"
                           value={loginPassword}
-                          onChange={(e) => setLoginPassword(e.target.value)}
+                          onChange={(e) => { setLoginPassword(e.target.value); setLoginError(null); }}
                           style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', fontSize: '13.5px', background: 'rgba(0,0,0,0.2)', color: '#fff', transition: 'border-color 200ms ease' }}
                           required
                         />
                       </div>
 
+                      {loginError && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 59, 48, 0.1)', border: '1px solid rgba(255, 59, 48, 0.25)', padding: '10px 12px', borderRadius: '10px' }}>
+                          <AlertTriangle size={14} style={{ color: 'var(--red)', flexShrink: 0 }} />
+                          <span style={{ fontSize: '11.5px', color: 'var(--red)', lineHeight: '1.3' }}>{loginError}</span>
+                        </div>
+                      )}
+
                       <button
                         type="submit"
-                        style={{ padding: '14px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, var(--blue), var(--purple))', color: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '14px', marginTop: '10px', boxShadow: '0 4px 15px rgba(0, 122, 255, 0.3)', transition: 'all 200ms ease' }}
+                        disabled={loginBusy}
+                        style={{ padding: '14px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, var(--blue), var(--purple))', color: 'white', fontWeight: '700', cursor: loginBusy ? 'wait' : 'pointer', fontSize: '14px', marginTop: '4px', boxShadow: '0 4px 15px rgba(0, 122, 255, 0.3)', transition: 'all 200ms ease', opacity: loginBusy ? 0.7 : 1 }}
                       >
-                        Authenticate OS Gateway
+                        {loginBusy ? 'Signing in…' : 'Sign In'}
                       </button>
+
+                      <a
+                        href="/reset-password"
+                        style={{ textAlign: 'center', fontSize: '12px', color: 'var(--blue)', textDecoration: 'none', marginTop: '2px' }}
+                      >
+                        Forgot password?
+                      </a>
                     </form>
 
-                    {/* Developer Note */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 149, 0, 0.05)', border: '1px solid rgba(255, 149, 0, 0.1)', padding: '10px', borderRadius: '10px' }}>
-                        <AlertTriangle size={14} style={{ color: 'var(--orange)', flexShrink: 0 }} />
-                        <span style={{ fontSize: '10.5px', color: 'var(--orange)', lineHeight: '1.3' }}>Note: Admin credentials are pre-filled. Click authenticate to enter.</span>
-                      </div>
-                      <div style={{ textAlign: 'center', fontSize: '10.5px', color: 'var(--label-tertiary)', marginTop: '4px' }}>
-                        Secured Gateway • Powered by <span style={{ color: 'var(--blue)', fontWeight: '600' }}>ScalePods</span>
-                      </div>
+                    <div style={{ textAlign: 'center', fontSize: '10.5px', color: 'var(--label-tertiary)', marginTop: '16px' }}>
+                      Secured Gateway • Powered by <span style={{ color: 'var(--blue)', fontWeight: '600' }}>ScalePods</span>
                     </div>
                   </div>
                 </div>
@@ -1156,7 +1341,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                   <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ background: 'rgba(52, 199, 89, 0.1)', color: 'var(--green)', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bot size={18} /></div>
                     <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#fff', margin: 0 }}>Customer Care & Review Engine</h3>
-                    <p style={{ fontSize: '12.5px', color: 'var(--label-secondary)', lineHeight: '1.4', margin: 0 }}>Track post-purchase journeys, intercept low ratings privately, and auto-route 5-star reviews to public marketplaces (Amazon, Google, Nykaa).</p>
+                    <p style={{ fontSize: '12.5px', color: 'var(--label-secondary)', lineHeight: '1.4', margin: 0 }}>Track post-purchase journeys, intercept low ratings privately, and auto-route 5-star reviews to public marketplaces (Amazon, Google).</p>
                   </div>
                   {/* Module 3 */}
                   <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MapPin, Search, RefreshCw, ChevronDown, X, Star, Building2, Clock } from 'lucide-react';
 import { useAppContext } from '../../ClientWrapper';
 import { isWithinDateRange } from '@/lib/dateRangeFilter';
@@ -66,16 +67,35 @@ export default function ScraperClient({ initialSalons }: { initialSalons: Salon[
   const [maxResults, setMaxResults] = useState(20);
   const [queryDropdownOpen, setQueryDropdownOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  // Position the fixed dropdown from the trigger's viewport rect. Recomputed
+  // on open, and on scroll/resize while open.
+  useLayoutEffect(() => {
+    if (!queryDropdownOpen) return;
+    const update = () => {
+      const el = triggerRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setMenuRect({ top: r.bottom + 6, left: r.left, width: r.width });
+    };
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [queryDropdownOpen]);
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setQueryDropdownOpen(false);
-      }
-    }
-    if (queryDropdownOpen) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (!queryDropdownOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setQueryDropdownOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [queryDropdownOpen]);
 
   const toggleQuery = (q: string) => {
@@ -149,11 +169,12 @@ export default function ScraperClient({ initialSalons }: { initialSalons: Salon[
             />
           </div>
 
-          <div ref={dropdownRef} style={{ position: 'relative' }}>
+          <div style={{ position: 'relative' }}>
             <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--label-secondary)', display: 'block', marginBottom: '6px' }}>
               Search Queries
             </label>
             <button
+              ref={triggerRef}
               type="button"
               onClick={() => setQueryDropdownOpen((v) => !v)}
               className="input"
@@ -175,45 +196,125 @@ export default function ScraperClient({ initialSalons }: { initialSalons: Salon[
               <ChevronDown size={14} style={{ transform: queryDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease', flexShrink: 0 }} />
             </button>
 
-            {queryDropdownOpen && (
-              <div
-                className="liquid-card"
-                style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 6px)',
-                  left: 0,
-                  right: 0,
-                  zIndex: 500,
-                  padding: '6px',
-                  maxHeight: '260px',
-                  overflowY: 'auto',
-                  boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
-                }}
-              >
-                {QUERY_OPTIONS.map((q) => {
-                  const checked = queries.includes(q);
-                  return (
-                    <label
-                      key={q}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        background: checked ? 'rgba(0, 122, 255, 0.08)' : 'transparent',
-                      }}
+            {queries.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                {queries.map((q) => (
+                  <span
+                    key={q}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      padding: '3px 8px',
+                      borderRadius: '999px',
+                      background: 'rgba(0, 122, 255, 0.14)',
+                      color: 'var(--blue)',
+                    }}
+                  >
+                    {q}
+                    <button
+                      type="button"
+                      onClick={() => toggleQuery(q)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--blue)', display: 'flex', padding: 0 }}
+                      aria-label={`Remove ${q}`}
                     >
-                      <input type="checkbox" checked={checked} onChange={() => toggleQuery(q)} style={{ accentColor: 'var(--blue)' }} />
-                      <span style={{ color: 'var(--label-primary)' }}>{q}</span>
-                    </label>
-                  );
-                })}
+                      <X size={11} />
+                    </button>
+                  </span>
+                ))}
               </div>
             )}
           </div>
+
+          {queryDropdownOpen &&
+            menuRect &&
+            createPortal(
+              <>
+                <div
+                  onClick={() => setQueryDropdownOpen(false)}
+                  style={{ position: 'fixed', inset: 0, zIndex: 4000 }}
+                />
+                <div
+                  role="listbox"
+                  aria-multiselectable
+                  style={{
+                    position: 'fixed',
+                    top: menuRect.top,
+                    left: menuRect.left,
+                    width: menuRect.width,
+                    minWidth: '220px',
+                    zIndex: 4001,
+                    padding: '6px',
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    borderRadius: '12px',
+                    background: 'var(--bg-layer1, #1c1c1e)',
+                    border: '1px solid var(--separator)',
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                  }}
+                >
+                  {QUERY_OPTIONS.map((q) => {
+                    const checked = queries.includes(q);
+                    return (
+                      <button
+                        key={q}
+                        type="button"
+                        role="option"
+                        aria-selected={checked}
+                        onClick={() => toggleQuery(q)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          width: '100%',
+                          padding: '10px 10px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: checked ? 700 : 500,
+                          textAlign: 'left',
+                          border: 'none',
+                          userSelect: 'none',
+                          color: 'var(--label-primary)',
+                          background: checked ? 'rgba(0, 122, 255, 0.16)' : 'transparent',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!checked) e.currentTarget.style.background = 'var(--fill-tertiary)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = checked ? 'rgba(0, 122, 255, 0.16)' : 'transparent';
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: '16px',
+                            height: '16px',
+                            flexShrink: 0,
+                            borderRadius: '5px',
+                            border: `1.5px solid ${checked ? 'var(--blue)' : 'var(--separator-opaque, #888)'}`,
+                            background: checked ? 'var(--blue)' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff',
+                          }}
+                        >
+                          {checked && (
+                            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6.5L4.5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </span>
+                        {q}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>,
+              document.body
+            )}
 
           <div>
             <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--label-secondary)', display: 'block', marginBottom: '6px' }}>

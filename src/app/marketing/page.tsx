@@ -175,7 +175,7 @@ export default function MarketingPage() {
   const updateDraftStatus = (id: string, status: string, extra: Partial<ContentDraft> = {}) => {
     setContentDrafts(prev => (prev as ContentDraft[]).map(d => {
       if (d.id !== id) return d;
-      const historyEntry = { status, by: 'Apoorv M.', time: 'Just now', note: extra.rejectionReason || '' };
+      const historyEntry = { status, by: 'Reviewer', time: 'Just now', note: extra.rejectionReason || '' };
       return { ...d, status, ...extra, history: [...(d.history || []), historyEntry] };
     }));
   };
@@ -186,13 +186,13 @@ export default function MarketingPage() {
   };
 
   const handleApprove = (id: string, title: string) => {
-    updateDraftStatus(id, 'approved', { reviewedBy: 'Apoorv M.' });
+    updateDraftStatus(id, 'approved', { reviewedBy: 'Reviewer' });
     showToast(`"${title}" approved. Ready to schedule & publish.`, 'success');
   };
 
   const handleRequestRevision = (id: string) => {
     if (!rejectionReason.trim()) { showToast('Please enter a revision note.', 'error'); return; }
-    updateDraftStatus(id, 'revision', { rejectionReason, reviewedBy: 'Apoorv M.' });
+    updateDraftStatus(id, 'revision', { rejectionReason, reviewedBy: 'Reviewer' });
     showToast('Revision requested. Creator notified with your notes.', 'info');
     setRejectionReason('');
     setDetailMode('view');
@@ -225,7 +225,7 @@ export default function MarketingPage() {
     if (!commentInput.trim()) return;
     setContentDrafts(prev => (prev as ContentDraft[]).map(d => {
       if (d.id !== id) return d;
-      const newComment = { author: 'Apoorv M.', text: commentInput, time: 'Just now' };
+      const newComment = { author: 'Reviewer', text: commentInput, time: 'Just now' };
       return { ...d, comments: [...(d.comments || []), newComment] };
     }));
     setCommentInput('');
