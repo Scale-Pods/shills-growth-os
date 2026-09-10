@@ -1,4 +1,5 @@
 import { getSalonCrmServiceClient, type Salon, type OutreachSequence } from '@/lib/supabase/salonCrm';
+import { fetchVapiCalls } from '../_data/vapiCalls';
 import SalonCrmDashboard from './SalonCrmDashboard';
 
 export const dynamic = 'force-dynamic';
@@ -6,9 +7,10 @@ export const dynamic = 'force-dynamic';
 async function fetchData() {
   const supabase = getSalonCrmServiceClient();
 
-  const [salonsRes, outreachRes] = await Promise.all([
+  const [salonsRes, outreachRes, vapiCalls] = await Promise.all([
     supabase.from('salons').select('*'),
     supabase.from('outreach_sequences').select('*').order('executed_at', { ascending: false }).limit(2000),
+    fetchVapiCalls(),
   ]);
 
   if (salonsRes.error) console.error('Failed to fetch salons:', salonsRes.error.message);
@@ -17,10 +19,11 @@ async function fetchData() {
   return {
     salons: (salonsRes.data as Salon[]) ?? [],
     outreachSequences: (outreachRes.data as OutreachSequence[]) ?? [],
+    vapiCalls,
   };
 }
 
 export default async function SalonCrmDashboardPage() {
-  const { salons, outreachSequences } = await fetchData();
-  return <SalonCrmDashboard salons={salons} outreachSequences={outreachSequences} />;
+  const { salons, outreachSequences, vapiCalls } = await fetchData();
+  return <SalonCrmDashboard salons={salons} outreachSequences={outreachSequences} vapiCalls={vapiCalls} />;
 }

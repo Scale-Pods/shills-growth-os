@@ -5,8 +5,14 @@ import Chart from 'chart.js/auto';
 import { useAppContext } from '../../ClientWrapper';
 import type { Salon, OutreachSequence } from '@/lib/supabase/salonCrm';
 import { parseSentiment } from '@/lib/supabase/salonCrm';
-import { Users, MapPin, MessageSquare, Mail, TrendingUp, Calendar, Send, Reply } from 'lucide-react';
+import { Users, MapPin, MessageSquare, Mail, TrendingUp, Calendar, Send, Reply, Phone, PhoneCall } from 'lucide-react';
 import { isWithinDateRange } from '@/lib/dateRangeFilter';
+import {
+  isConnectedCall,
+  formatDuration,
+  formatUsd,
+  type VapiCallLog,
+} from '@/lib/supabase/vapiCalls';
 
 const STAGES = ['lead_generated', 'contacted', 'interested', 'sample_sent', 'demo_booked', 'negotiation', 'won', 'lost'];
 
@@ -29,9 +35,11 @@ function formatKolkata(iso: string | null): string {
 export default function SalonCrmDashboard({
   salons,
   outreachSequences,
+  vapiCalls = [],
 }: {
   salons: Salon[];
   outreachSequences: OutreachSequence[];
+  vapiCalls?: VapiCallLog[];
 }) {
   const funnelChartRef = useRef<HTMLCanvasElement | null>(null);
   const funnelChartInstance = useRef<Chart | null>(null);
@@ -97,8 +105,41 @@ export default function SalonCrmDashboard({
     .map((s) => s.whatsapp_last_reply_at as string)
     .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
 
-  // Salons Engaged: either channel's last_reply_at is not null, within range
-  const engagedSalons = new Set([...emailReplies, ...whatsappReplies].map((s) => s.id)).size;
+  // Voice calls (vapi_call_logs), anchored on started_at || created_at, within range
+  const dateVoiceCalls = useMemo(
+    () =>
+      vapiCalls.filter((c) =>
+        isWithinDateRange(c.started_at ?? c.created_at, dateRange)
+      ),
+    [vapiCalls, dateRange]
+  );
+  const voiceConnected = useMemo(() => dateVoiceCalls.filter(isConnectedCall), [dateVoiceCalls]);
+  const voiceConnectRate =
+    dateVoiceCalls.length > 0 ? Math.round((voiceConnected.length / dateVoiceCalls.length) * 100) : 0;
+  const voiceTalkSec = voiceConnected.reduce((s, c) => s + (c.duration_seconds ?? 0), 0);
+  const voiceSpendUsd = dateVoiceCalls.reduce((s, c) => s + (c.cost_usd ?? 0), 0);
+  const lastVoiceCallAt =
+    dateVoiceCalls
+      .map((c) => c.started_at ?? c.created_at)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b as string).getTime() - new Date(a as string).getTime())[0] ?? null;
+  const voicePositive = useMemo(() => {
+    const calledSalonIds = new Set(
+      dateVoiceCalls.map((c) => c.master_leads_id).filter(Boolean).map(String)
+    );
+    return salons.filter(
+      (s) => calledSalonIds.has(String(s.id)) && parseSentiment(s.voice_sentiment).interest === 'positive'
+    ).length;
+  }, [dateVoiceCalls, salons]);
+
+  // Salons Engaged: any channel's last_reply_at is set, or a voice call connected, within range
+  const engagedVoiceSalonIds = useMemo(() => {
+    const connectedLeadIds = new Set(voiceConnected.map((c) => c.master_leads_id).filter(Boolean).map(String));
+    return salons.filter((s) => connectedLeadIds.has(String(s.id))).map((s) => s.id);
+  }, [voiceConnected, salons]);
+  const engagedSalons = new Set(
+    [...emailReplies, ...whatsappReplies].map((s) => s.id).concat(engagedVoiceSalonIds)
+  ).size;
 
   // Positive Signals: parse "positive - wants_sample - ..." format from both sentiment columns,
   // gated by whether that channel's reply falls within the selected date range
@@ -182,7 +223,7 @@ export default function SalonCrmDashboard({
         <div>
           <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>Salon CRM Dashboard</h2>
           <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
-            Live metrics across lead generation, outreach cadence, and inbound reply handling.
+            Live metrics across lead generation, outreach cadence, inbound replies, and AI voice calls.
           </p>
         </div>
       </div>
@@ -206,8 +247,8 @@ export default function SalonCrmDashboard({
         </div>
         <div className="metric-tile liquid-card" style={{ '--tile-accent-color': 'var(--orange)' } as React.CSSProperties}>
           <span className="label">Positive Signals</span>
-          <span className="value">{positiveSignals.total}</span>
-          <span className="trend up" style={{ color: 'var(--orange)' }}><MessageSquare size={12} /> {positiveSignals.waPositive} WA + {positiveSignals.emailPositive} email</span>
+          <span className="value">{positiveSignals.total + voicePositive}</span>
+          <span className="trend up" style={{ color: 'var(--orange)' }}><MessageSquare size={12} /> {positiveSignals.waPositive} WA + {positiveSignals.emailPositive} email + {voicePositive} voice</span>
         </div>
       </div>
 
@@ -232,6 +273,30 @@ export default function SalonCrmDashboard({
           <span className="label">Total WhatsApp Replies</span>
           <span className="value">{whatsappReplies.length}</span>
           <span className="trend up" style={{ color: 'var(--purple)' }}><Reply size={12} /> Last: {formatKolkata(lastWhatsappReplyAt)}</span>
+        </div>
+      </div>
+
+      {/* Row 3: AI voice calls (vapi_call_logs) */}
+      <div className="metrics-grid mb-24">
+        <div className="metric-tile liquid-card" style={{ '--tile-accent-color': 'var(--purple)' } as React.CSSProperties}>
+          <span className="label">Voice Calls Placed</span>
+          <span className="value">{dateVoiceCalls.length}</span>
+          <span className="trend up" style={{ color: 'var(--purple)' }}><PhoneCall size={12} /> Last: {formatKolkata(lastVoiceCallAt)}</span>
+        </div>
+        <div className="metric-tile liquid-card" style={{ '--tile-accent-color': 'var(--green)' } as React.CSSProperties}>
+          <span className="label">Voice Connect Rate</span>
+          <span className="value">{dateVoiceCalls.length ? `${voiceConnectRate}%` : '—'}</span>
+          <span className="trend up" style={{ color: 'var(--green)' }}><Phone size={12} /> {voiceConnected.length} connected</span>
+        </div>
+        <div className="metric-tile liquid-card" style={{ '--tile-accent-color': 'var(--blue)' } as React.CSSProperties}>
+          <span className="label">Voice Talk Time</span>
+          <span className="value">{formatDuration(voiceTalkSec)}</span>
+          <span className="trend up" style={{ color: 'var(--blue)' }}><Calendar size={12} /> Across connected calls</span>
+        </div>
+        <div className="metric-tile liquid-card" style={{ '--tile-accent-color': 'var(--orange)' } as React.CSSProperties}>
+          <span className="label">Voice Spend</span>
+          <span className="value">{formatUsd(voiceSpendUsd)}</span>
+          <span className="trend up" style={{ color: 'var(--orange)' }}><TrendingUp size={12} /> {dateVoiceCalls.length} calls billed</span>
         </div>
       </div>
 
@@ -263,7 +328,7 @@ export default function SalonCrmDashboard({
         <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Mail size={16} /> Channel Activity
         </h3>
-        <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+        <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
           <div style={{ background: 'var(--fill-quaternary)', padding: '14px', borderRadius: '12px' }}>
             <span style={{ fontSize: '11px', color: 'var(--label-secondary)', textTransform: 'uppercase', fontWeight: '600' }}>WhatsApp Cadence Sends</span>
             <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--green)', marginTop: '4px' }}>{whatsappSent.length}</div>
@@ -273,6 +338,11 @@ export default function SalonCrmDashboard({
             <span style={{ fontSize: '11px', color: 'var(--label-secondary)', textTransform: 'uppercase', fontWeight: '600' }}>Email Cadence Sends</span>
             <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--blue)', marginTop: '4px' }}>{emailsSent.length}</div>
             <div style={{ fontSize: '11px', color: 'var(--label-tertiary)', marginTop: '2px' }}>{emailReplies.length} salons replied</div>
+          </div>
+          <div style={{ background: 'var(--fill-quaternary)', padding: '14px', borderRadius: '12px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--label-secondary)', textTransform: 'uppercase', fontWeight: '600' }}>Voice Calls (Day 10)</span>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--purple)', marginTop: '4px' }}>{dateVoiceCalls.length}</div>
+            <div style={{ fontSize: '11px', color: 'var(--label-tertiary)', marginTop: '2px' }}>{voiceConnected.length} connected · {voicePositive} positive</div>
           </div>
           <div style={{ background: 'var(--fill-quaternary)', padding: '14px', borderRadius: '12px' }}>
             <span style={{ fontSize: '11px', color: 'var(--label-secondary)', textTransform: 'uppercase', fontWeight: '600' }}>Demo/Negotiation Stage</span>

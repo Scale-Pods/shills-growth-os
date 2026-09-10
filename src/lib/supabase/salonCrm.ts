@@ -43,11 +43,18 @@ export interface Salon {
   notes: string | null;
   conversation_transcript: TranscriptEntry[];
   conversation_transcript_email: TranscriptEntry[];
+  conversation_transcript_voice: string | null;
   last_reply_at: string | null;
   whatsapp_sentiment: string | null;
   email_sentiment: string | null;
+  voice_sentiment: string | null;
   whatsapp_last_reply_at: string | null;
   email_last_reply_at: string | null;
+  voice_call_status: string | null;
+  voice_call_at: string | null;
+  voice_last_picked_at: string | null;
+  voice_note: string | null;
+  call_recording_url: string | null;
   created_at: string;
   updated_at: string;
 }

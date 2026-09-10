@@ -352,6 +352,7 @@ const WORKSPACES: Workspace[] = [
         items: [
           { href: '/salon-crm/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
           { href: '/salon-crm/email/dashboard', label: 'Email', icon: Mail },
+          { href: '/salon-crm/voice/dashboard', label: 'Voice', icon: Phone },
         ],
       },
       {
@@ -446,6 +447,7 @@ const SALON_CRM_EMAIL_SECTIONS: WorkspaceSection[] = [
       { href: '/salon-crm/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
       { href: '/salon-crm/leads', label: 'Leads', icon: Users },
       { href: '/salon-crm/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
+      { href: '/salon-crm/voice/dashboard', label: 'Voice', icon: Phone },
     ],
   },
 ];
@@ -465,6 +467,27 @@ const SALON_CRM_WHATSAPP_SECTIONS: WorkspaceSection[] = [
     items: [
       { href: '/salon-crm/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
       { href: '/salon-crm/leads', label: 'Leads', icon: Users },
+      { href: '/salon-crm/email/dashboard', label: 'Email', icon: Mail },
+      { href: '/salon-crm/voice/dashboard', label: 'Voice', icon: Phone },
+    ],
+  },
+];
+
+const SALON_CRM_VOICE_SECTIONS: WorkspaceSection[] = [
+  {
+    label: 'Voice',
+    items: [
+      { href: '/salon-crm/voice/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/salon-crm/voice/logs', label: 'Call Logs', icon: Phone },
+      { href: '/salon-crm/voice/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Salon CRM',
+    items: [
+      { href: '/salon-crm/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
+      { href: '/salon-crm/leads', label: 'Leads', icon: Users },
+      { href: '/salon-crm/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
       { href: '/salon-crm/email/dashboard', label: 'Email', icon: Mail },
     ],
   },
@@ -488,6 +511,9 @@ function resolveWorkspace(pathname: string | null): Workspace {
     }
     if (pathname.startsWith('/salon-crm/whatsapp')) {
       return { ...base, sections: SALON_CRM_WHATSAPP_SECTIONS };
+    }
+    if (pathname.startsWith('/salon-crm/voice')) {
+      return { ...base, sections: SALON_CRM_VOICE_SECTIONS };
     }
   }
   return base;
@@ -801,6 +827,9 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
     { text: 'Go to Salon CRM: Email Dashboard', type: 'navigation', target: '/salon-crm/email/dashboard', shortcut: '' },
     { text: 'Go to Salon CRM: Email Inbox', type: 'navigation', target: '/salon-crm/email/inbox', shortcut: '' },
     { text: 'Go to Salon CRM: Email Analytics', type: 'navigation', target: '/salon-crm/email/analytics', shortcut: '' },
+    { text: 'Go to Salon CRM: Voice Dashboard', type: 'navigation', target: '/salon-crm/voice/dashboard', shortcut: '' },
+    { text: 'Go to Salon CRM: Voice Call Logs', type: 'navigation', target: '/salon-crm/voice/logs', shortcut: '' },
+    { text: 'Go to Salon CRM: Voice Analytics', type: 'navigation', target: '/salon-crm/voice/analytics', shortcut: '' },
     { text: 'Go to Receivables: Dashboard', type: 'navigation', target: '/accounts-receivable/dashboard', shortcut: '⌘6' },
     { text: 'Go to Receivables: Upload Invoice', type: 'navigation', target: '/accounts-receivable/upload-invoice', shortcut: '' },
     { text: 'Go to Receivables: WhatsApp Dashboard', type: 'navigation', target: '/accounts-receivable/whatsapp/dashboard', shortcut: '' },
