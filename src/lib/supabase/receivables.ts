@@ -8,6 +8,11 @@ export const UPLOAD_INVOICE_WEBHOOK_URL =
   process.env.NEXT_PUBLIC_RECEIVABLES_upload_invoice_WEBHOOK_URL ||
   'https://n8n.srv1010832.hstgr.cloud/webhook-test/ff35f4f3-7469-4bf2-9fe5-ab15c8db9b3a';
 
+/** Webhook the Party Ledger's Closed Yes/No buttons and partial-payment input post to. */
+export const LEDGER_CLOSED_STATUS_WEBHOOK_URL =
+  process.env.NEXT_PUBLIC_RECEIVABLES_ledger_closed_status_WEBHOOK_URL ||
+  'https://n8n.srv1010832.hstgr.cloud/webhook/ac4bb844-791b-44d2-b0b9-c88b5aa25dae';
+
 // Client-side (browser) instance — anon key, subject to RLS.
 export const receivablesClient = createClient(url, anonKey);
 
@@ -38,6 +43,8 @@ export interface PartyLedgerRow {
   closed: string | null;
   gstin: string | null;
   url: string | null;
+  /** Outstanding amount for this ledger entry, as maintained by the backend (n8n). Source of truth for Net Outstanding. */
+  Final_Amount: string | null;
 }
 
 /** Row of public.recovery_outreach. */

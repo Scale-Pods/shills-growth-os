@@ -11,10 +11,13 @@ import {
   Receipt,
   IndianRupee,
   Users,
+  Check,
+  Send,
 } from 'lucide-react';
 import { isWithinDateRange } from '@/lib/dateRangeFilter';
 import {
   UPLOAD_INVOICE_WEBHOOK_URL,
+  LEDGER_CLOSED_STATUS_WEBHOOK_URL,
   parseAmount,
   formatINR,
   type PartyLedgerRow,
@@ -26,6 +29,11 @@ export default function UploadInvoiceClient({ rows }: { rows: PartyLedgerRow[] }
   const { dateRange, dateLabel, showToast } = useAppContext();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  // Optimistic "closed" override per row id, set the moment a Yes/No click
+  // succeeds against the webhook — the backend (n8n) is the real source of
+  // truth and `rows` only reflects it after the next fetch, so this keeps
+  // the row highlighted correctly without waiting on a reload.
+  const [closedOverrides, setClosedOverrides] = useState<Record<number, 'yes' | 'no'>>({});
 
   const dateRows = useMemo(
     () => rows.filter((r) => isWithinDateRange(r.created_at, dateRange)),
@@ -45,8 +53,11 @@ export default function UploadInvoiceClient({ rows }: { rows: PartyLedgerRow[] }
   const totals = useMemo(() => {
     const debit = filtered.reduce((sum, r) => sum + parseAmount(r.debit), 0);
     const credit = filtered.reduce((sum, r) => sum + parseAmount(r.credit), 0);
+    // Net Outstanding is sourced from Final_Amount (maintained by the backend
+    // as bills get closed / partially paid), not derived from debit - credit.
+    const outstanding = filtered.reduce((sum, r) => sum + parseAmount(r.Final_Amount), 0);
     const parties = new Set(filtered.map((r) => r.party_name).filter(Boolean)).size;
-    return { debit, credit, outstanding: debit - credit, parties };
+    return { debit, credit, outstanding, parties };
   }, [filtered]);
 
   return (
@@ -87,7 +98,7 @@ export default function UploadInvoiceClient({ rows }: { rows: PartyLedgerRow[] }
         <div className="metric-tile liquid-card" style={{ '--tile-accent-color': 'var(--green)' } as React.CSSProperties}>
           <span className="label">Net Outstanding</span>
           <span className="value">{formatINR(totals.outstanding)}</span>
-          <span className="trend up" style={{ color: 'var(--green)' }}><IndianRupee size={12} /> Debit − Credit</span>
+          <span className="trend up" style={{ color: 'var(--green)' }}><IndianRupee size={12} /> Final_Amount</span>
         </div>
       </div>
 
@@ -131,8 +142,19 @@ export default function UploadInvoiceClient({ rows }: { rows: PartyLedgerRow[] }
                   </td>
                 </tr>
               ) : (
-                filtered.map((r) => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid var(--separator)' }}>
+                filtered.map((r) => {
+                  const effectiveClosed = closedOverrides[r.id] ?? (String(r.closed).toLowerCase() === 'yes' ? 'yes' : 'no');
+                  const isRowClosed = effectiveClosed === 'yes';
+                  return (
+                  <tr
+                    key={r.id}
+                    style={{
+                      borderBottom: '1px solid var(--separator)',
+                      background: isRowClosed ? 'rgba(52, 199, 89, 0.14)' : undefined,
+                      boxShadow: isRowClosed ? 'inset 3px 0 0 var(--green)' : undefined,
+                      transition: 'background 200ms ease',
+                    }}
+                  >
                     <td style={{ padding: '12px 8px' }}>
                       <span style={{ fontWeight: '700', display: 'block' }}>{r.party_name ?? '—'}</span>
                       <span style={{ fontSize: '11px', color: 'var(--label-tertiary)' }}>
@@ -160,9 +182,12 @@ export default function UploadInvoiceClient({ rows }: { rows: PartyLedgerRow[] }
                       {r.running_balance ? formatINR(parseAmount(r.running_balance)) : '—'}
                     </td>
                     <td style={{ padding: '12px 8px' }}>
-                      <span className={`badge ${String(r.closed).toLowerCase() === 'yes' ? 'badge-green' : 'badge-orange'}`}>
-                        {r.closed ?? 'No'}
-                      </span>
+                      <ClosedStatusControl
+                        row={r}
+                        showToast={showToast}
+                        effectiveClosed={effectiveClosed}
+                        onClosedChange={(value) => setClosedOverrides((prev) => ({ ...prev, [r.id]: value }))}
+                      />
                     </td>
                     <td style={{ padding: '12px 8px', fontSize: '11.5px', color: 'var(--label-tertiary)' }}>
                       {r.created_at ? new Date(r.created_at).toLocaleString() : '—'}
@@ -182,7 +207,8 @@ export default function UploadInvoiceClient({ rows }: { rows: PartyLedgerRow[] }
                       )}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -190,6 +216,242 @@ export default function UploadInvoiceClient({ rows }: { rows: PartyLedgerRow[] }
       </div>
 
       {showModal && <UploadInvoiceModal onClose={() => setShowModal(false)} showToast={showToast} />}
+    </div>
+  );
+}
+
+/**
+ * Per-row control in the "Closed" column: a Yes/No pair where Yes opens a
+ * confirmation modal ("Confirm full payment received") before anything is
+ * sent, and No posts immediately. The webhook payload always carries the
+ * row's debit amount, plus the partial-payment amount too if one was
+ * entered in the field below. Nothing here writes to Supabase directly —
+ * the webhook (n8n) is the source of truth for applying the update, same
+ * pattern as the Upload Invoice modal.
+ */
+function ClosedStatusControl({
+  row,
+  showToast,
+  effectiveClosed,
+  onClosedChange,
+}: {
+  row: PartyLedgerRow;
+  showToast: (message: string, type?: string) => void;
+  effectiveClosed: 'yes' | 'no';
+  onClosedChange: (value: 'yes' | 'no') => void;
+}) {
+  const isClosed = effectiveClosed === 'yes';
+  const [sendingClosed, setSendingClosed] = useState<'yes' | 'no' | null>(null);
+  const [amount, setAmount] = useState('');
+  const [sendingAmount, setSendingAmount] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const debitAmount = parseAmount(row.debit);
+  const partialAmount = amount.trim() ? Number(amount.trim()) : null;
+  const hasValidPartial = partialAmount !== null && Number.isFinite(partialAmount) && partialAmount > 0;
+
+  const basePayload = {
+    id: row.id,
+    party_name: row.party_name,
+    voucher_no: row.voucher_no,
+    bill_no: row.bill_no,
+  };
+
+  const sendClosedYes = async () => {
+    setSendingClosed('yes');
+    try {
+      const res = await fetch(LEDGER_CLOSED_STATUS_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...basePayload,
+          action: 'closed_status',
+          closed: 'yes',
+          debit: debitAmount,
+          ...(hasValidPartial ? { partial_amount: partialAmount } : {}),
+        }),
+      });
+      if (!res.ok) throw new Error(`Webhook returned ${res.status}`);
+      onClosedChange('yes');
+      setConfirmOpen(false);
+      showToast(`Marked bill ${row.bill_no ?? row.voucher_no ?? row.id} as closed.`, 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to update closed status.', 'error');
+    } finally {
+      setSendingClosed(null);
+    }
+  };
+
+  const sendClosedNo = async () => {
+    setSendingClosed('no');
+    try {
+      const res = await fetch(LEDGER_CLOSED_STATUS_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...basePayload, action: 'closed_status', closed: 'no' }),
+      });
+      if (!res.ok) throw new Error(`Webhook returned ${res.status}`);
+      onClosedChange('no');
+      showToast(`Marked bill ${row.bill_no ?? row.voucher_no ?? row.id} as not closed.`, 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to update closed status.', 'error');
+    } finally {
+      setSendingClosed(null);
+    }
+  };
+
+  const sendPartialPayment = async () => {
+    if (!hasValidPartial || partialAmount === null) {
+      showToast('Enter a valid partial payment amount.', 'error');
+      return;
+    }
+    setSendingAmount(true);
+    try {
+      const res = await fetch(LEDGER_CLOSED_STATUS_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...basePayload, action: 'partial_payment', debit: debitAmount, amount: partialAmount }),
+      });
+      if (!res.ok) throw new Error(`Webhook returned ${res.status}`);
+      showToast(`Partial payment of ${formatINR(partialAmount)} sent for bill ${row.bill_no ?? row.voucher_no ?? row.id}.`, 'success');
+      setAmount('');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to send partial payment.', 'error');
+    } finally {
+      setSendingAmount(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '150px' }}>
+      {isClosed ? (
+        <span
+          className="badge badge-green"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', width: 'fit-content', fontSize: '11px' }}
+        >
+          <Check size={11} /> Closed
+        </span>
+      ) : (
+        <>
+          <div style={{ display: 'inline-flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--glass-border)', width: 'fit-content' }}>
+            <button
+              onClick={() => setConfirmOpen(true)}
+              disabled={sendingClosed !== null}
+              title="Mark this bill as closed"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', fontSize: '11px', fontWeight: 700,
+                border: 'none', cursor: sendingClosed ? 'wait' : 'pointer',
+                background: 'var(--fill-quaternary)',
+                color: 'var(--label-secondary)',
+                opacity: sendingClosed !== null && sendingClosed !== 'yes' ? 0.5 : 1,
+              }}
+            >
+              {sendingClosed === 'yes' && (
+                <span className="animate-spin" style={{ width: '9px', height: '9px', border: '1.5px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }} />
+              )}
+              Yes
+            </button>
+            <button
+              onClick={sendClosedNo}
+              disabled={sendingClosed !== null}
+              title="Mark this bill as not closed"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', fontSize: '11px', fontWeight: 700,
+                border: 'none', borderLeft: '1px solid var(--glass-border)', cursor: sendingClosed ? 'wait' : 'pointer',
+                background: 'var(--orange)',
+                color: '#fff',
+                opacity: sendingClosed !== null && sendingClosed !== 'no' ? 0.5 : 1,
+              }}
+            >
+              {sendingClosed === 'no' ? (
+                <span className="animate-spin" style={{ width: '9px', height: '9px', border: '1.5px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }} />
+              ) : (
+                <Check size={11} />
+              )}
+              No
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === '' || /^\d*\.?\d*$/.test(v)) setAmount(v);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') sendPartialPayment();
+              }}
+              placeholder="Partial ₹"
+              className="input"
+              style={{ width: '84px', padding: '4px 6px', fontSize: '11px' }}
+            />
+            <button
+              onClick={sendPartialPayment}
+              disabled={sendingAmount || !amount.trim()}
+              title="Send partial payment amount"
+              className="btn-icon"
+              style={{
+                width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: sendingAmount || !amount.trim() ? 0.5 : 1, cursor: sendingAmount || !amount.trim() ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {sendingAmount ? (
+                <span className="animate-spin" style={{ width: '10px', height: '10px', border: '1.5px solid var(--label-secondary)', borderTopColor: 'transparent', borderRadius: '50%' }} />
+              ) : (
+                <Send size={11} />
+              )}
+            </button>
+          </div>
+        </>
+      )}
+
+      {confirmOpen && (
+        <div className="spotlight-overlay" style={{ display: 'flex' }} onClick={() => !sendingClosed && setConfirmOpen(false)}>
+          <div className="spotlight-panel" style={{ maxWidth: '420px', width: '100%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="spotlight-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px' }}>
+              <span style={{ fontWeight: '700', fontSize: '16px' }}>Confirm Full Payment Received</span>
+              <button className="btn-icon" onClick={() => setConfirmOpen(false)} disabled={sendingClosed !== null}><X size={14} /></button>
+            </div>
+            <div style={{ padding: '20px', borderTop: '1px solid var(--separator)', borderBottom: '1px solid var(--separator)' }}>
+              <p style={{ fontSize: '13.5px', color: 'var(--label-secondary)', margin: '0 0 14px', lineHeight: 1.5 }}>
+                Confirm that <strong style={{ color: 'var(--label-primary)' }}>{row.party_name ?? 'this party'}</strong>&rsquo;s bill{' '}
+                <strong style={{ color: 'var(--label-primary)' }}>{row.bill_no ?? row.voucher_no ?? row.id}</strong> has received full payment.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--fill-quaternary)', borderRadius: '10px', padding: '12px 14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                  <span style={{ color: 'var(--label-tertiary)' }}>Debit amount</span>
+                  <span style={{ fontWeight: 700 }}>{formatINR(debitAmount)}</span>
+                </div>
+                {hasValidPartial && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                    <span style={{ color: 'var(--label-tertiary)' }}>Partial amount entered</span>
+                    <span style={{ fontWeight: 700, color: 'var(--green)' }}>{formatINR(partialAmount as number)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div style={{ padding: '16px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button className="btn-secondary" onClick={() => setConfirmOpen(false)} disabled={sendingClosed !== null}>Cancel</button>
+              <button
+                className="btn-primary"
+                onClick={sendClosedYes}
+                disabled={sendingClosed !== null}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--green)', opacity: sendingClosed ? 0.7 : 1 }}
+              >
+                {sendingClosed === 'yes' ? (
+                  <span className="animate-spin" style={{ width: '13px', height: '13px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                ) : (
+                  <Check size={14} />
+                )}
+                Yes, confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
