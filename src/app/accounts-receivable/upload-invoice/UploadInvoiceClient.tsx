@@ -255,6 +255,7 @@ function ClosedStatusControl({
     party_name: row.party_name,
     voucher_no: row.voucher_no,
     bill_no: row.bill_no,
+    gstin: row.gstin,
   };
 
   const sendClosedYes = async () => {
