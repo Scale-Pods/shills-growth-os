@@ -19,6 +19,8 @@ export interface TranscriptEntry {
   direction: 'inbound' | 'outbound';
   message: string;
   at: string;
+  status?: string | null;
+  wamid?: string | null;
 }
 
 export interface Salon {

@@ -10,10 +10,11 @@ import {
   Search,
   Clock,
   Users,
+  Check,
   CheckCheck,
   TrendingUp,
   Link2,
-  Check,
+  AlertCircle,
 } from 'lucide-react';
 import { isWithinDateRange } from '@/lib/dateRangeFilter';
 import { normalizeTranscript } from '@/lib/supabase/transcript';
@@ -25,6 +26,41 @@ interface WaThread {
   salon: Salon;
   entries: TranscriptEntry[];
   lastAt: string | null;
+}
+
+type DeliveryState = 'sent' | 'delivered' | 'read' | 'failed' | 'unknown';
+
+/** Parse the raw transcript entry status ("delivered", "failed: <title> (<details>)", ...)
+ * into a normalized state plus a human-readable detail string for failures. */
+function parseDeliveryStatus(raw: string | null | undefined): { state: DeliveryState; detail: string | null } {
+  if (!raw) return { state: 'unknown', detail: null };
+  const lower = raw.toLowerCase();
+  if (lower.startsWith('failed')) {
+    const detail = raw.slice(raw.indexOf(':') + 1).trim() || null;
+    return { state: 'failed', detail };
+  }
+  if (lower === 'read') return { state: 'read', detail: null };
+  if (lower === 'delivered') return { state: 'delivered', detail: null };
+  if (lower === 'sent') return { state: 'sent', detail: null };
+  return { state: 'unknown', detail: raw };
+}
+
+function deliveryStateColor(state: DeliveryState): string {
+  switch (state) {
+    case 'read': return 'var(--green)';
+    case 'delivered': return 'var(--blue)';
+    case 'sent': return 'var(--label-tertiary)';
+    case 'failed': return 'var(--red)';
+    default: return 'var(--label-tertiary)';
+  }
+}
+
+function DeliveryIcon({ state, size = 12 }: { state: DeliveryState; size?: number }) {
+  const color = deliveryStateColor(state);
+  if (state === 'failed') return <AlertCircle size={size} style={{ color }} />;
+  if (state === 'read' || state === 'delivered') return <CheckCheck size={size} style={{ color }} />;
+  if (state === 'sent') return <Check size={size} style={{ color }} />;
+  return null;
 }
 
 function buildThreads(salons: Salon[]): WaThread[] {
@@ -164,14 +200,27 @@ function WaChats({ threads }: { threads: WaThread[] }) {
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [stageFilter, setStageFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | DeliveryState>('all');
+
+  const stages = useMemo(
+    () => Array.from(new Set(threads.map((t) => t.salon.current_stage).filter(Boolean))).sort(),
+    [threads]
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return threads;
-    return threads.filter((t) =>
-      [t.salon.salon_name, t.salon.whatsapp_number, t.salon.phone, t.salon.city].filter(Boolean).some((v) => String(v).toLowerCase().includes(q))
-    );
-  }, [threads, search]);
+    return threads.filter((t) => {
+      const matchesSearch =
+        !q || [t.salon.salon_name, t.salon.whatsapp_number, t.salon.phone, t.salon.city].filter(Boolean).some((v) => String(v).toLowerCase().includes(q));
+      const matchesStage = stageFilter === 'all' || t.salon.current_stage === stageFilter;
+      const last = t.entries[t.entries.length - 1];
+      const lastOutbound = [...t.entries].reverse().find((e) => e.direction === 'outbound');
+      const lastState = lastOutbound ? parseDeliveryStatus(lastOutbound.status).state : 'unknown';
+      const matchesStatus = statusFilter === 'all' || lastState === statusFilter;
+      return matchesSearch && matchesStage && matchesStatus && Boolean(last);
+    });
+  }, [threads, search, stageFilter, statusFilter]);
 
   const active = filtered.find((t) => t.salon.id === selectedId) ?? filtered[0] ?? null;
 
@@ -187,16 +236,51 @@ function WaChats({ threads }: { threads: WaThread[] }) {
     <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '24px', alignItems: 'start' }}>
       <div className="liquid-card" style={{ padding: '16px' }}>
         <SearchBox value={search} onChange={setSearch} placeholder="Search salon or number..." />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '620px', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <select
+            className="input"
+            value={stageFilter}
+            onChange={(e) => setStageFilter(e.target.value)}
+            style={{ padding: '7px 8px', fontSize: '12px', flex: 1, color: 'var(--label-primary)' }}
+          >
+            <option value="all">All stages</option>
+            {stages.map((s) => (
+              <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+          <select
+            className="input"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | DeliveryState)}
+            style={{ padding: '7px 8px', fontSize: '12px', flex: 1, color: 'var(--label-primary)' }}
+          >
+            <option value="all">All status</option>
+            <option value="read">Read</option>
+            <option value="delivered">Delivered</option>
+            <option value="sent">Sent</option>
+            <option value="failed">Failed</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '560px', overflowY: 'auto' }}>
           {filtered.length === 0 ? (
-            <Empty text="No chats." />
+            <Empty text="No chats match this filter." />
           ) : (
             filtered.map((t) => {
               const last = t.entries[t.entries.length - 1];
+              const lastOutbound = [...t.entries].reverse().find((e) => e.direction === 'outbound');
+              const lastDelivery = lastOutbound ? parseDeliveryStatus(lastOutbound.status) : null;
               return (
                 <button key={t.salon.id} onClick={() => setSelectedId(t.salon.id)} style={rowBtnStyle(active?.salon.id === t.salon.id)}>
-                  <span style={{ fontSize: '13px', fontWeight: '700' }}>{t.salon.salon_name}</span>
-                  <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--label-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {t.salon.salon_name}
+                    </span>
+                    {lastDelivery && lastDelivery.state !== 'unknown' && (
+                      <DeliveryIcon state={lastDelivery.state} size={13} />
+                    )}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--label-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {last ? `${last.direction === 'inbound' ? '← ' : '→ '}${last.message.replace(/\s+/g, ' ').slice(0, 54)}` : ''}
                   </span>
                 </button>
@@ -213,8 +297,8 @@ function WaChats({ threads }: { threads: WaThread[] }) {
           <>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--separator)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0 }}>{active.salon.salon_name}</h3>
-                <span style={{ fontSize: '11.5px', color: 'var(--label-tertiary)' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0, color: 'var(--label-primary)' }}>{active.salon.salon_name}</h3>
+                <span style={{ fontSize: '11.5px', color: 'var(--label-secondary)' }}>
                   {active.salon.whatsapp_number ?? active.salon.phone ?? '—'} · {active.salon.city ?? active.salon.region}
                 </span>
               </div>
@@ -241,6 +325,7 @@ function WaChats({ threads }: { threads: WaThread[] }) {
             >
               {active.entries.map((entry, idx) => {
                 const inbound = entry.direction === 'inbound';
+                const delivery = !inbound ? parseDeliveryStatus(entry.status) : null;
                 return (
                   <div
                     key={idx}
@@ -248,16 +333,24 @@ function WaChats({ threads }: { threads: WaThread[] }) {
                       alignSelf: inbound ? 'flex-start' : 'flex-end',
                       maxWidth: '78%',
                       background: inbound ? 'var(--bg-layer1, #fff)' : 'rgba(37, 211, 102, 0.16)',
-                      border: '1px solid var(--separator)',
+                      border: delivery?.state === 'failed' ? '1px solid var(--red)' : '1px solid var(--separator)',
                       padding: '9px 13px',
                       borderRadius: inbound ? '2px 12px 12px 12px' : '12px 2px 12px 12px',
                     }}
                   >
                     <p style={{ fontSize: '13px', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--label-primary)' }}>{entry.message}</p>
-                    <span style={{ fontSize: '10px', color: 'var(--label-tertiary)', display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--label-tertiary)', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginTop: '4px' }}>
                       {new Date(entry.at).toLocaleString()}
-                      {!inbound && <CheckCheck size={12} style={{ color: 'var(--blue)' }} />}
+                      {delivery && delivery.state !== 'unknown' && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: deliveryStateColor(delivery.state) }} title={delivery.detail ?? delivery.state}>
+                          <DeliveryIcon state={delivery.state} size={12} />
+                          <span style={{ textTransform: 'capitalize' }}>{delivery.state}</span>
+                        </span>
+                      )}
                     </span>
+                    {delivery?.state === 'failed' && delivery.detail && (
+                      <p style={{ fontSize: '10.5px', color: 'var(--red)', margin: '4px 0 0', textAlign: 'right' }}>{delivery.detail}</p>
+                    )}
                   </div>
                 );
               })}
@@ -537,6 +630,8 @@ function rowBtnStyle(activeRow: boolean): React.CSSProperties {
     borderRadius: '10px',
     border: 'none',
     cursor: 'pointer',
+    color: 'var(--label-primary)',
+    font: 'inherit',
     background: activeRow ? 'var(--fill-tertiary)' : 'transparent',
   };
 }
