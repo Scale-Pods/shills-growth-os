@@ -45,6 +45,8 @@ export interface PartyLedgerRow {
   url: string | null;
   /** Outstanding amount for this ledger entry, as maintained by the backend (n8n). Source of truth for Net Outstanding. */
   Final_Amount: string | null;
+  /** Date the client paid, as set by the backend once payment is recorded. Format: DD-MM-YYYY. */
+  Payment_Date: string | null;
 }
 
 /** Row of public.recovery_outreach. */

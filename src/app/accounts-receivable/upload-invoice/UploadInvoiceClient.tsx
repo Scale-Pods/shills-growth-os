@@ -172,7 +172,22 @@ export default function UploadInvoiceClient({ rows }: { rows: PartyLedgerRow[] }
                     </td>
                     <td style={{ padding: '12px 8px' }}>{r.voucher_no ?? '—'}</td>
                     <td style={{ padding: '12px 8px' }}>{r.bill_no ?? '—'}</td>
-                    <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '600' }}>
+                    <td
+                      style={{
+                        padding: '12px 8px',
+                        textAlign: 'right',
+                        fontWeight: '600',
+                        ...(r.Payment_Date
+                          ? {
+                              background: 'rgba(52, 199, 89, 0.14)',
+                              boxShadow: 'inset 0 0 0 1px rgba(52, 199, 89, 0.35)',
+                              borderRadius: '6px',
+                              cursor: 'help',
+                            }
+                          : {}),
+                      }}
+                      title={r.Payment_Date ? `Client Payment Date: ${r.Payment_Date}` : undefined}
+                    >
                       {r.debit ? formatINR(parseAmount(r.debit)) : '—'}
                     </td>
                     <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '700' }}>
