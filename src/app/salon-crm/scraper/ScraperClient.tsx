@@ -2,13 +2,18 @@
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MapPin, Search, RefreshCw, ChevronDown, X, Star, Building2, Clock } from 'lucide-react';
+import { MapPin, Search, RefreshCw, ChevronDown, X, Star, Building2, Clock, UploadCloud, FileSpreadsheet } from 'lucide-react';
 import { useAppContext } from '../../ClientWrapper';
 import { isWithinDateRange } from '@/lib/dateRangeFilter';
 import type { Salon } from '@/lib/supabase/salonCrm';
 
 const SCRAPER_WEBHOOK_URL =
   process.env.NEXT_PUBLIC_SALON_SCRAPER_WEBHOOK_URL || 'https://n8n.srv1010832.hstgr.cloud/webhook/lead-fetch';
+
+// Same n8n workflow as the scraper, a separate path so multipart file uploads
+// never collide with the scraper's JSON POST on /lead-fetch.
+const LEAD_UPLOAD_WEBHOOK_URL =
+  process.env.NEXT_PUBLIC_SALON_LEAD_UPLOAD_WEBHOOK_URL || 'https://n8n.srv1010832.hstgr.cloud/webhook/lead-upload';
 
 const QUERY_OPTIONS = [
   'Beauty Salon',
@@ -127,6 +132,30 @@ export default function ScraperClient({ initialSalons }: { initialSalons: Salon[
       showToast(err instanceof Error ? err.message : 'Failed to trigger scraper.', 'error');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file next time
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('data', file, file.name);
+      formData.append('region', region.trim() || 'csv_upload');
+
+      const res = await fetch(LEAD_UPLOAD_WEBHOOK_URL, { method: 'POST', body: formData });
+      if (!res.ok) throw new Error(`Webhook returned ${res.status}`);
+      showToast(`"${file.name}" uploaded — leads will appear here once processing finishes.`, 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to upload file.', 'error');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -368,6 +397,36 @@ export default function ScraperClient({ initialSalons }: { initialSalons: Salon[
             ))}
           </div>
         )}
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--separator)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <FileSpreadsheet size={16} style={{ color: 'var(--label-tertiary)' }} />
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--label-primary)' }}>Upload Leads (Excel/CSV)</div>
+              <div style={{ fontSize: '11.5px', color: 'var(--label-tertiary)' }}>
+                A sheet with name and phone columns — new leads get the same outreach sequence, duplicates are matched by phone.
+              </div>
+            </div>
+          </div>
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={handleFileSelected}
+              style={{ display: 'none' }}
+            />
+            <button
+              className="btn-secondary"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px' }}
+            >
+              {uploading ? <RefreshCw className="animate-spin" size={14} /> : <UploadCloud size={14} />}
+              {uploading ? 'Uploading...' : 'Upload Excel/CSV'}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
