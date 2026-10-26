@@ -84,9 +84,11 @@ export interface RecoveryOutreachRow {
   call_1_date: string | null;
   call_1_content: string | null;
   call_1_sent_at: string | null;
+  call1_url: string | null;
   call_2_date: string | null;
   call_2_content: string | null;
   call_2_sent_at: string | null;
+  call2_url: string | null;
 
   email_replied: string | null;
   email_conversation: ConversationEntry[] | string | null;

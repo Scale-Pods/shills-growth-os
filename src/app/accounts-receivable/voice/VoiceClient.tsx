@@ -19,19 +19,20 @@ interface CallItem {
   content: string;
   sentAt: string | null;
   sentAtDate: Date | null;
+  recordingUrl: string | null;
 }
 
 function collectCalls(rows: RecoveryOutreachRow[]): CallItem[] {
   const out: CallItem[] = [];
   for (const row of rows) {
-    const steps: Array<[number, string | null, string | null]> = [
-      [1, row.call_1_content, row.call_1_sent_at],
-      [2, row.call_2_content, row.call_2_sent_at],
+    const steps: Array<[number, string | null, string | null, string | null]> = [
+      [1, row.call_1_content, row.call_1_sent_at, row.call1_url],
+      [2, row.call_2_content, row.call_2_sent_at, row.call2_url],
     ];
-    for (const [step, content, sentAt] of steps) {
+    for (const [step, content, sentAt, recordingUrl] of steps) {
       if (!sentAt) continue;
       if (!content || !content.trim()) continue;
-      out.push({ row, step, content, sentAt, sentAtDate: parseConversationTimestamp(sentAt) });
+      out.push({ row, step, content, sentAt, sentAtDate: parseConversationTimestamp(sentAt), recordingUrl });
     }
   }
   return out;
@@ -155,6 +156,22 @@ export default function VoiceClient({ rows }: { rows: RecoveryOutreachRow[] }) {
                 {active.row.phone ?? '—'} · Bill {active.row.bill_no ?? '—'} · Outstanding{' '}
                 {active.row.total_outstanding ? formatINR(parseAmount(active.row.total_outstanding)) : '—'}
               </div>
+
+              {active.recordingUrl && (
+                <div style={{ marginBottom: '16px' }}>
+                  <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Call Recording</span>
+                  <audio controls src={active.recordingUrl} style={{ width: '100%', marginTop: '6px', height: '36px' }} />
+                </div>
+              )}
+
+              {active.row.summary && (
+                <div style={{ marginBottom: '16px' }}>
+                  <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Summary</span>
+                  <p style={{ fontSize: '12.5px', background: 'var(--fill-quaternary)', padding: '12px 14px', borderRadius: '10px', color: 'var(--label-primary)', lineHeight: '1.5', marginTop: '6px', whiteSpace: 'pre-wrap' }}>
+                    {active.row.summary}
+                  </p>
+                </div>
+              )}
 
               <div style={{ marginBottom: '16px' }}>
                 <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Call Script</span>
