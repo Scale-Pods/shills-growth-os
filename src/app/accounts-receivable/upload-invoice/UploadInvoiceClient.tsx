@@ -127,8 +127,8 @@ export default function UploadInvoiceClient({ rows }: { rows: PartyLedgerRow[] }
                 <th style={{ padding: '12px 8px' }}>Voucher No.</th>
                 <th style={{ padding: '12px 8px' }}>Bill No.</th>
                 <th style={{ padding: '12px 8px', textAlign: 'right' }}>Debit</th>
-                <th style={{ padding: '12px 8px', textAlign: 'right' }}>Credit</th>
                 <th style={{ padding: '12px 8px', textAlign: 'right' }}>Running Balance</th>
+                <th style={{ padding: '12px 8px', textAlign: 'right' }}>Final Amount</th>
                 <th style={{ padding: '12px 8px' }}>Closed</th>
                 <th style={{ padding: '12px 8px' }}>Created</th>
                 <th style={{ padding: '12px 8px' }}>Invoice</th>
@@ -175,11 +175,11 @@ export default function UploadInvoiceClient({ rows }: { rows: PartyLedgerRow[] }
                     <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '600' }}>
                       {r.debit ? formatINR(parseAmount(r.debit)) : '—'}
                     </td>
-                    <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '600', color: parseAmount(r.credit) > 0 ? 'var(--green)' : undefined }}>
-                      {r.credit ? formatINR(parseAmount(r.credit)) : '—'}
-                    </td>
                     <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '700' }}>
                       {r.running_balance ? formatINR(parseAmount(r.running_balance)) : '—'}
+                    </td>
+                    <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '700', color: 'var(--green)' }}>
+                      {r.Final_Amount ? formatINR(parseAmount(r.Final_Amount)) : '—'}
                     </td>
                     <td style={{ padding: '12px 8px' }}>
                       <ClosedStatusControl
