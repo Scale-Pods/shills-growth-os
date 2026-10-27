@@ -40,6 +40,9 @@ import {
   BarChart3
 } from 'lucide-react';
 import { DateRangePicker, type DateRange } from '@/components/shared/DateRangePicker';
+import OutreachSequenceModal from './accounts-receivable/OutreachSequenceModal';
+
+const OUTREACH_SETTINGS_ALLOWED_EMAIL = 'info@scalepods.co';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
 
 // Interfaces for our state elements to ensure type safety
@@ -381,7 +384,7 @@ const WORKSPACES: Workspace[] = [
         items: [
           { href: '/accounts-receivable/whatsapp', label: 'WhatsApp', icon: MessageSquare },
           { href: '/accounts-receivable/email', label: 'Email', icon: Mail },
-          { href: '/accounts-receivable/voice', label: 'Voice Panel', icon: Phone },
+          { href: '/accounts-receivable/voice/dashboard', label: 'Voice', icon: Phone },
         ],
       },
     ],
@@ -389,7 +392,8 @@ const WORKSPACES: Workspace[] = [
 ];
 
 // Channel sub-navs for Receivables — the sidebar swaps to these while the
-// user is inside /accounts-receivable/email/* or /accounts-receivable/whatsapp/*.
+// user is inside /accounts-receivable/email/*, /accounts-receivable/whatsapp/*,
+// or /accounts-receivable/voice/*.
 const RECEIVABLES_EMAIL_SECTIONS: WorkspaceSection[] = [
   {
     label: 'Email',
@@ -405,7 +409,7 @@ const RECEIVABLES_EMAIL_SECTIONS: WorkspaceSection[] = [
     items: [
       { href: '/accounts-receivable/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
       { href: '/accounts-receivable/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
-      { href: '/accounts-receivable/voice', label: 'Voice Panel', icon: Phone },
+      { href: '/accounts-receivable/voice/dashboard', label: 'Voice', icon: Phone },
     ],
   },
 ];
@@ -425,7 +429,26 @@ const RECEIVABLES_WHATSAPP_SECTIONS: WorkspaceSection[] = [
     items: [
       { href: '/accounts-receivable/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
       { href: '/accounts-receivable/email/dashboard', label: 'Email', icon: Mail },
-      { href: '/accounts-receivable/voice', label: 'Voice Panel', icon: Phone },
+      { href: '/accounts-receivable/voice/dashboard', label: 'Voice', icon: Phone },
+    ],
+  },
+];
+
+const RECEIVABLES_VOICE_SECTIONS: WorkspaceSection[] = [
+  {
+    label: 'Voice',
+    items: [
+      { href: '/accounts-receivable/voice/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/accounts-receivable/voice/logs', label: 'Call Logs', icon: Phone },
+      { href: '/accounts-receivable/voice/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Receivables',
+    items: [
+      { href: '/accounts-receivable/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
+      { href: '/accounts-receivable/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
+      { href: '/accounts-receivable/email/dashboard', label: 'Email', icon: Mail },
     ],
   },
 ];
@@ -504,6 +527,9 @@ function resolveWorkspace(pathname: string | null): Workspace {
     if (pathname.startsWith('/accounts-receivable/whatsapp')) {
       return { ...base, sections: RECEIVABLES_WHATSAPP_SECTIONS };
     }
+    if (pathname.startsWith('/accounts-receivable/voice')) {
+      return { ...base, sections: RECEIVABLES_VOICE_SECTIONS };
+    }
   }
   if (base.id === 'salon-crm') {
     if (pathname.startsWith('/salon-crm/email')) {
@@ -565,7 +591,14 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
   const [sessionExpiredNotice, setSessionExpiredNotice] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const [outreachModalOpen, setOutreachModalOpen] = useState(false);
   const activeWorkspace = resolveWorkspace(pathname);
+  // Outreach Sequence Generator — hidden gear icon, only in Receivables Recovery,
+  // only for the one allowed account. Client-side gate only; the real check
+  // (session cookie + allowed email) lives in /api/outreach-generator.
+  const canManageOutreachSettings =
+    (pathname?.startsWith('/accounts-receivable') ?? false) &&
+    currentUser?.email?.toLowerCase() === OUTREACH_SETTINGS_ALLOWED_EMAIL;
 
   // Close the workspace dropdown whenever the route changes.
   useEffect(() => {
@@ -840,7 +873,9 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
     { text: 'Go to Receivables: Email Sent', type: 'navigation', target: '/accounts-receivable/email/sent', shortcut: '' },
     { text: 'Go to Receivables: Email Received', type: 'navigation', target: '/accounts-receivable/email/received', shortcut: '' },
     { text: 'Go to Receivables: Email Analytics', type: 'navigation', target: '/accounts-receivable/email/analytics', shortcut: '' },
-    { text: 'Go to Receivables: Voice Panel', type: 'navigation', target: '/accounts-receivable/voice', shortcut: '' },
+    { text: 'Go to Receivables: Voice Dashboard', type: 'navigation', target: '/accounts-receivable/voice/dashboard', shortcut: '' },
+    { text: 'Go to Receivables: Voice Call Logs', type: 'navigation', target: '/accounts-receivable/voice/logs', shortcut: '' },
+    { text: 'Go to Receivables: Voice Analytics', type: 'navigation', target: '/accounts-receivable/voice/analytics', shortcut: '' },
   ];
 
   const filteredSpotlightOptions = spotlightOptions.filter((item) =>
@@ -1191,6 +1226,16 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {canManageOutreachSettings && (
+                    <button
+                      className="btn-icon"
+                      onClick={() => setOutreachModalOpen(true)}
+                      title="Outreach Sequence Generator"
+                      style={{ background: 'transparent', border: 'none', color: 'var(--label-tertiary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    >
+                      <SettingsIcon size={16} />
+                    </button>
+                  )}
                   <DateRangePicker
                     value={dateRange}
                     label={dateLabel}
@@ -1206,6 +1251,9 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                 {children}
               </main>
             </div>
+            {canManageOutreachSettings && (
+              <OutreachSequenceModal isOpen={outreachModalOpen} onClose={() => setOutreachModalOpen(false)} />
+            )}
           </>
         ) : (
           /* Premium B2B SaaS Redesigned Landing Page */

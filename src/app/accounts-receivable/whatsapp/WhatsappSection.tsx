@@ -20,6 +20,7 @@ import {
   parseConversationTimestamp,
   parseAmount,
   formatINR,
+  outreachOwedAmount,
   type RecoveryOutreachRow,
   type ConversationEntry,
 } from '@/lib/supabase/receivables';
@@ -105,7 +106,7 @@ function WaDashboard({ rows, threads }: { rows: RecoveryOutreachRow[]; threads: 
   const awaiting = threads.length - replied;
   const replyRate = threads.length > 0 ? Math.round((replied / threads.length) * 100) : 0;
 
-  const outstandingInPlay = threads.reduce((sum, t) => sum + parseAmount(t.row.total_outstanding), 0);
+  const outstandingInPlay = threads.reduce((sum, t) => sum + outreachOwedAmount(t.row), 0);
 
   const recent = threads.slice(0, 8);
 
@@ -239,8 +240,8 @@ function WaChats({ threads }: { threads: WaThread[] }) {
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0 }}>{active.row.party_name ?? '—'}</h3>
                 <span style={{ fontSize: '11.5px', color: 'var(--label-tertiary)' }}>
-                  {active.row.phone ?? '—'} · Bill {active.row.bill_no ?? '—'} · Outstanding{' '}
-                  {active.row.total_outstanding ? formatINR(parseAmount(active.row.total_outstanding)) : '—'}
+                  {active.row.phone ?? '—'} · Bill {active.row.bill_no ?? '—'} · Final Amount{' '}
+                  {formatINR(outreachOwedAmount(active.row))}
                 </span>
               </div>
               {active.row.current_stage && <span className="badge badge-blue">{active.row.current_stage}</span>}
@@ -324,8 +325,8 @@ function WaLeads({ threads }: { threads: WaThread[] }) {
         <Tile accent="var(--orange)" label="Awaiting" value={filtered.length - replied} icon={<Clock size={12} />} sub="No reply yet" />
         <Tile
           accent="var(--purple)"
-          label="Outstanding"
-          value={formatINR(filtered.reduce((s, t) => s + parseAmount(t.row.total_outstanding), 0))}
+          label="Final Amount"
+          value={formatINR(filtered.reduce((s, t) => s + outreachOwedAmount(t.row), 0))}
           icon={<TrendingUp size={12} />}
           sub="Across leads"
         />
@@ -387,7 +388,7 @@ function WaLeads({ threads }: { threads: WaThread[] }) {
                       </td>
                       <td style={{ padding: '12px 8px' }}>{t.row.bill_no ?? '—'}</td>
                       <td style={{ padding: '12px 8px', fontWeight: '600' }}>
-                        {t.row.total_outstanding ? formatINR(parseAmount(t.row.total_outstanding)) : '—'}
+                        {formatINR(outreachOwedAmount(t.row))}
                       </td>
                       <td style={{ padding: '12px 8px' }}>
                         <span className={`badge ${t.entries.some(isInbound) ? 'badge-green' : 'badge-orange'}`}>
@@ -447,10 +448,10 @@ function WaAnalytics({ rows, threads }: { rows: RecoveryOutreachRow[]; threads: 
 
   const recoveredValue = threads
     .filter((t) => String(t.row.closed).toLowerCase() === 'yes' || String(t.row.status).toLowerCase() === 'closed')
-    .reduce((s, t) => s + parseAmount(t.row.total_outstanding), 0);
+    .reduce((s, t) => s + outreachOwedAmount(t.row), 0);
   const openValue = threads
     .filter((t) => !(String(t.row.closed).toLowerCase() === 'yes' || String(t.row.status).toLowerCase() === 'closed'))
-    .reduce((s, t) => s + parseAmount(t.row.total_outstanding), 0);
+    .reduce((s, t) => s + outreachOwedAmount(t.row), 0);
 
   return (
     <>

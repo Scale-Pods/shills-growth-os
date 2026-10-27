@@ -1,9 +1,5 @@
-import { fetchRecoveryOutreach } from '../_data/outreach';
-import VoiceClient from './VoiceClient';
+import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
-
-export default async function ReceivablesVoicePage() {
-  const rows = await fetchRecoveryOutreach();
-  return <VoiceClient rows={rows} />;
+export default function ReceivablesVoiceIndex() {
+  redirect('/accounts-receivable/voice/dashboard');
 }

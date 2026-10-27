@@ -19,6 +19,8 @@ import {
   parseConversationTimestamp,
   parseAmount,
   formatINR,
+  outreachOwedAmount,
+  outreachStep,
   type RecoveryOutreachRow,
   type ConversationEntry,
 } from '@/lib/supabase/receivables';
@@ -28,7 +30,7 @@ type EmailView = 'dashboard' | 'sent' | 'received' | 'analytics';
 /** One outbound email step flattened from a row. */
 interface SentEmail {
   row: RecoveryOutreachRow;
-  step: number; // 1 | 2 | 3
+  step: number; // 1-8
   content: string;
   sentAt: string | null;
   sentAtDate: Date | null;
@@ -37,18 +39,14 @@ interface SentEmail {
 function collectSentEmails(rows: RecoveryOutreachRow[]): SentEmail[] {
   const out: SentEmail[] = [];
   for (const row of rows) {
-    const steps: Array<[number, string | null, string | null]> = [
-      [1, row.email_1_content, row.email_1_sent_at],
-      [2, row.email_2_content, row.email_2_sent_at],
-      [3, row.email_3_content, row.email_3_sent_at],
-    ];
-    for (const [step, content, sentAt] of steps) {
+    for (let n = 1; n <= 8; n++) {
+      const { content, sent_at: sentAt } = outreachStep(row, 'email', n as 1);
       // Only show when the email was actually sent AND has content.
       if (!sentAt) continue;
       if (!content || !content.trim()) continue;
       out.push({
         row,
-        step,
+        step: n,
         content,
         sentAt,
         sentAtDate: parseConversationTimestamp(sentAt),
@@ -208,7 +206,7 @@ function EmailDashboard({
                     <td style={{ padding: '12px 8px', fontWeight: '700' }}>{e.row.party_name ?? '—'}</td>
                     <td style={{ padding: '12px 8px' }}><span className="badge badge-blue">Email {e.step}</span></td>
                     <td style={{ padding: '12px 8px' }}>{e.row.bill_no ?? '—'}</td>
-                    <td style={{ padding: '12px 8px' }}>{e.row.total_outstanding ? formatINR(parseAmount(e.row.total_outstanding)) : '—'}</td>
+                    <td style={{ padding: '12px 8px' }}>{formatINR(outreachOwedAmount(e.row))}</td>
                     <td style={{ padding: '12px 8px', fontSize: '11.5px', color: 'var(--label-tertiary)' }}>{e.sentAt ?? '—'}</td>
                   </tr>
                 ))
@@ -291,8 +289,8 @@ function EmailSent({ sentEmails }: { sentEmails: SentEmail[] }) {
               <span style={{ fontSize: '11.5px', color: 'var(--label-tertiary)' }}>Sent {active.sentAt ?? '—'}</span>
             </div>
             <div style={{ fontSize: '11.5px', color: 'var(--label-tertiary)', marginBottom: '14px' }}>
-              To: {active.row.email ?? '—'} · Bill {active.row.bill_no ?? '—'} · Outstanding{' '}
-              {active.row.total_outstanding ? formatINR(parseAmount(active.row.total_outstanding)) : '—'}
+              To: {active.row.email ?? '—'} · Bill {active.row.bill_no ?? '—'} · Final Amount{' '}
+              {formatINR(outreachOwedAmount(active.row))}
             </div>
             <EmailBody html={active.content} />
           </>
@@ -451,7 +449,7 @@ function EmailAnalytics({
     let closed = 0;
     let open = 0;
     for (const r of rows) {
-      const amt = parseAmount(r.total_outstanding);
+      const amt = outreachOwedAmount(r);
       if (String(r.closed).toLowerCase() === 'yes' || String(r.status).toLowerCase() === 'closed') closed += amt;
       else open += amt;
     }

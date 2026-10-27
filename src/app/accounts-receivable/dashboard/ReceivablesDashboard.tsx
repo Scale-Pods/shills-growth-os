@@ -21,6 +21,9 @@ import {
   parseConversationTimestamp,
   parseAmount,
   formatINR,
+  outreachOwedAmount,
+  outreachStep,
+  callStep,
   type PartyLedgerRow,
   type RecoveryOutreachRow,
   type ConversationEntry,
@@ -98,42 +101,43 @@ export default function ReceivablesDashboard({
     const total = dateOutreach.length;
     const closed = dateOutreach.filter(isClosed);
     const open = dateOutreach.filter((r) => !isClosed(r));
-    const recoveredValue = closed.reduce((s, r) => s + parseAmount(r.total_outstanding), 0);
-    const openValue = open.reduce((s, r) => s + parseAmount(r.total_outstanding), 0);
+    const recoveredValue = closed.reduce((s, r) => s + outreachOwedAmount(r), 0);
+    const openValue = open.reduce((s, r) => s + outreachOwedAmount(r), 0);
     const overdueValue = dateOutreach.reduce((s, r) => s + parseAmount(r.overdue_amount), 0);
 
     let emailsSent = 0;
     let waSent = 0;
     let callsSent = 0;
     for (const r of dateOutreach) {
-      if (r.email_1_sent_at && r.email_1_content) emailsSent++;
-      if (r.email_2_sent_at && r.email_2_content) emailsSent++;
-      if (r.email_3_sent_at && r.email_3_content) emailsSent++;
-      if (r.wa_1_sent_at && r.wa_1_content) waSent++;
-      if (r.wa_2_sent_at && r.wa_2_content) waSent++;
-      if (r.wa_3_sent_at && r.wa_3_content) waSent++;
-      if (r.call_1_sent_at && r.call_1_content) callsSent++;
-      if (r.call_2_sent_at && r.call_2_content) callsSent++;
+      for (let n = 1; n <= 8; n++) {
+        const step = outreachStep(r, 'email', n as 1);
+        if (step.sent_at && step.content) emailsSent++;
+      }
+      for (let n = 1; n <= 8; n++) {
+        const step = outreachStep(r, 'wa', n as 1);
+        if (step.sent_at && step.content) waSent++;
+      }
+      for (let n = 1; n <= 8; n++) {
+        const step = callStep(r, n as 1);
+        if (step.sent_at && step.content) callsSent++;
+      }
     }
 
-    const emailReplied = dateOutreach.filter(
-      (r) => normalizeConversation(r.email_conversation).some(isInbound) || String(r.email_replied).toLowerCase() === 'yes'
-    ).length;
-    const waReplied = dateOutreach.filter(
-      (r) => normalizeConversation(r.wa_conversation).some(isInbound) || String(r.wa_replied).toLowerCase() === 'yes'
-    ).length;
-    const callReplied = dateOutreach.filter(
-      (r) => normalizeConversation(r.call_conversation).some(isInbound) || String(r.call_replied).toLowerCase() === 'yes'
-    ).length;
-    const anyReplied = dateOutreach.filter(
-      (r) =>
-        normalizeConversation(r.email_conversation).some(isInbound) ||
-        normalizeConversation(r.wa_conversation).some(isInbound) ||
-        normalizeConversation(r.call_conversation).some(isInbound) ||
-        String(r.email_replied).toLowerCase() === 'yes' ||
-        String(r.wa_replied).toLowerCase() === 'yes' ||
-        String(r.call_replied).toLowerCase() === 'yes'
-    ).length;
+    // A reply is "any step has a reply" for email/WA (per-step reply text), and for
+    // calls, a step with a sentiment recorded (no separate call-reply transcript exists).
+    const hasEmailReply = (r: RecoveryOutreachRow) =>
+      normalizeConversation(r.email_conversation).some(isInbound) ||
+      [1, 2, 3, 4, 5, 6, 7, 8].some((n) => outreachStep(r, 'email', n as 1).reply?.trim());
+    const hasWaReply = (r: RecoveryOutreachRow) =>
+      normalizeConversation(r.wa_conversation).some(isInbound) ||
+      [1, 2, 3, 4, 5, 6, 7, 8].some((n) => outreachStep(r, 'wa', n as 1).reply?.trim());
+    const hasCallReply = (r: RecoveryOutreachRow) =>
+      [1, 2, 3, 4, 5, 6, 7, 8].some((n) => callStep(r, n as 1).sentiment?.trim());
+
+    const emailReplied = dateOutreach.filter(hasEmailReply).length;
+    const waReplied = dateOutreach.filter(hasWaReply).length;
+    const callReplied = dateOutreach.filter(hasCallReply).length;
+    const anyReplied = dateOutreach.filter((r) => hasEmailReply(r) || hasWaReply(r) || hasCallReply(r)).length;
 
     const disputes = dateOutreach.filter(
       (r) => r.dispute && r.dispute.trim() && r.dispute.trim().toLowerCase() !== 'no'
@@ -171,7 +175,7 @@ export default function ReceivablesDashboard({
       const stage = (r.current_stage || 'Unknown').trim();
       const cur = m.get(stage) ?? { count: 0, value: 0 };
       cur.count += 1;
-      cur.value += parseAmount(r.total_outstanding);
+      cur.value += outreachOwedAmount(r);
       m.set(stage, cur);
     }
     return Array.from(m.entries()).sort((a, b) => b[1].value - a[1].value);
@@ -213,7 +217,7 @@ export default function ReceivablesDashboard({
         <div>
           <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>Receivables Dashboard</h2>
           <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
-            Live outstanding balances, ageing, and AI recovery performance from <code>party_ledger</code> + <code>recovery_outreach</code>
+            Live outstanding balances, ageing, and AI recovery performance from <code>party_ledger</code> + <code>recovery_outreach_seq</code>
             {dateLabel ? ` · ${dateLabel}` : ''}.
           </p>
         </div>
