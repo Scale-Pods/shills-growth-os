@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { KeyRound, Lock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { KeyRound, Lock, CheckCircle2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 
 // 'checking' = reading the reset link from the URL
 // 'link'     = valid token found -> set new password
@@ -28,6 +28,8 @@ export default function ResetPasswordPage() {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -171,14 +173,17 @@ export default function ResetPasswordPage() {
               <div style={{ position: 'relative' }}>
                 <Lock size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)' }} />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   placeholder="At least 8 characters"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(null); }}
-                  style={{ ...inputStyle, paddingLeft: '34px' }}
+                  style={{ ...inputStyle, paddingLeft: '34px', paddingRight: '42px' }}
                   required
                 />
+                <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'} title={showPassword ? 'Hide password' : 'Show password'} style={eyeBtn}>
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
             <div>
@@ -186,14 +191,17 @@ export default function ResetPasswordPage() {
               <div style={{ position: 'relative' }}>
                 <Lock size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)' }} />
                 <input
-                  type="password"
+                  type={showConfirm ? 'text' : 'password'}
                   autoComplete="new-password"
                   placeholder="Re-enter password"
                   value={confirm}
                   onChange={(e) => { setConfirm(e.target.value); setError(null); }}
-                  style={{ ...inputStyle, paddingLeft: '34px' }}
+                  style={{ ...inputStyle, paddingLeft: '34px', paddingRight: '42px' }}
                   required
                 />
+                <button type="button" onClick={() => setShowConfirm((v) => !v)} aria-label={showConfirm ? 'Hide password' : 'Show password'} title={showConfirm ? 'Hide password' : 'Show password'} style={eyeBtn}>
+                  {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
             <button type="submit" disabled={busy} style={submitBtn(busy)}>
@@ -215,6 +223,20 @@ export default function ResetPasswordPage() {
     </div>
   );
 }
+
+const eyeBtn: React.CSSProperties = {
+  position: 'absolute',
+  right: '10px',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  color: 'rgba(255,255,255,0.55)',
+  display: 'flex',
+  alignItems: 'center',
+  padding: '4px',
+};
 
 function submitBtn(busy: boolean): React.CSSProperties {
   return {

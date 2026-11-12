@@ -37,7 +37,9 @@ import {
   UploadCloud,
   Send,
   Inbox,
-  BarChart3
+  BarChart3,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { DateRangePicker, type DateRange } from '@/components/shared/DateRangePicker';
 import OutreachSequenceModal from './accounts-receivable/OutreachSequenceModal';
@@ -675,6 +677,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginBusy, setLoginBusy] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotBusy, setForgotBusy] = useState(false);
@@ -794,12 +797,25 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
     }
   }, [pathname]);
 
+  // The app shell (html/body/.app-container/.main-workspace) is overflow:hidden
+  // and only .content-body should scroll. Reset just that pane on route change,
+  // and undo any stray scroll on the shell that would push the header off-screen
+  // and expose the sidebar footer.
+  useEffect(() => {
+    document.querySelector('.content-body')?.scrollTo({ top: 0 });
+    document
+      .querySelectorAll('.app-container, .main-workspace')
+      .forEach((el) => { el.scrollTop = 0; el.scrollLeft = 0; });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [pathname]);
+
   // Go Back in Custom History
   const goBack = () => {
     if (historyIndex > 0) {
       const target = historyStack[historyIndex - 1];
       setHistoryIndex(historyIndex - 1);
-      router.push(target);
+      router.push(target, { scroll: false });
     }
   };
 
@@ -808,7 +824,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
     if (historyIndex < historyStack.length - 1) {
       const target = historyStack[historyIndex + 1];
       setHistoryIndex(historyIndex + 1);
-      router.push(target);
+      router.push(target, { scroll: false });
     }
   };
 
@@ -1416,15 +1432,26 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
 
                       <div>
                         <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--label-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
-                        <input
-                          type="password"
-                          autoComplete="current-password"
-                          placeholder="••••••••"
-                          value={loginPassword}
-                          onChange={(e) => { setLoginPassword(e.target.value); setLoginError(null); }}
-                          style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', fontSize: '13.5px', background: 'rgba(0,0,0,0.2)', color: '#fff', transition: 'border-color 200ms ease' }}
-                          required
-                        />
+                        <div style={{ position: 'relative' }}>
+                          <input
+                            type={showLoginPassword ? 'text' : 'password'}
+                            autoComplete="current-password"
+                            placeholder="••••••••"
+                            value={loginPassword}
+                            onChange={(e) => { setLoginPassword(e.target.value); setLoginError(null); }}
+                            style={{ width: '100%', padding: '12px 42px 12px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', outline: 'none', fontSize: '13.5px', background: 'rgba(0,0,0,0.2)', color: '#fff', transition: 'border-color 200ms ease' }}
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowLoginPassword((v) => !v)}
+                            aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                            title={showLoginPassword ? 'Hide password' : 'Show password'}
+                            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', padding: '4px' }}
+                          >
+                            {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
                       </div>
 
                       {loginError && (
