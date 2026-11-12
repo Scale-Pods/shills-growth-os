@@ -1280,7 +1280,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '600px', height: '300px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255, 45, 85, 0.08) 0%, transparent 70%)', filter: 'blur(100px)', pointerEvents: 'none', zIndex: 0 }}></div>
 
             {/* Navigation Header */}
-            <header className="landing-navbar" style={{ position: 'sticky', left: 0, transform: 'none', width: '100%', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', background: 'rgba(10, 10, 12, 0.8)', backdropFilter: 'blur(20px)', zIndex: 10 }}>
+            <header className="landing-navbar" style={{ position: 'relative', top: 'auto', left: 0, transform: 'none', width: '100%', maxWidth: 'none', padding: 0, borderBottom: '1px solid rgba(255, 255, 255, 0.06)', background: 'rgba(10, 10, 12, 0.8)', backdropFilter: 'blur(20px)', zIndex: 10 }}>
               <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px' }}>
                 <div className="landing-nav-logo" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <img src="/icon.png" alt="Shills OS Logo" style={{ width: '64px', height: '64px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }} />
