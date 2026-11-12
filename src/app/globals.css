@@ -4743,3 +4743,82 @@ select.input option {
     overflow-x: auto;
   }
 }
+
+/* ==========================================================================
+   Responsive safety net
+   Many pages use inline-styled grids / fixed widths that class-based media
+   queries cannot override. These attribute selectors (with !important, which
+   beats inline styles) make every page, tab, modal and table fit any screen.
+   ========================================================================== */
+html, body { max-width: 100%; }
+img, video, canvas, svg { max-width: 100%; }
+.content-body { overflow-x: hidden; }
+.content-body > * { min-width: 0; }
+.content-body [style*="display: grid"] > *,
+.content-body [style*="display: flex"] > * { min-width: 0; }
+
+/* Any bare table scrolls inside its card instead of stretching the page */
+.content-body table { max-width: 100%; }
+.content-body .card:has(> table),
+.content-body div:has(> table.data-table) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ---------- Tablet (<= 1100px) ---------- */
+@media (max-width: 1100px) {
+  [style*="repeat(5, 1fr)"] { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)) !important; }
+}
+
+/* ---------- Small tablet / large phone (<= 900px) ---------- */
+@media (max-width: 900px) {
+  /* Sidebar + main / list + detail layouts stack */
+  [style*="340px 1fr"], [style*="320px 1fr"], [style*="1fr 380px"],
+  [style*="2fr 1fr"], [style*="2fr 1.1fr"], [style*="1fr 1.1fr"],
+  [style*="220px 1fr"], [style*="1.2fr 1fr"], [style*="1fr auto"]:not([style*="1fr auto 1fr"]) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  /* Dense KPI grids drop to two columns */
+  [style*="repeat(3, 1fr)"], [style*="repeat(4, 1fr)"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  [style*="repeat(8, 1fr)"] { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  /* Fixed-width fixed panels become fluid */
+  [style*="width: 240px"], [style*="width: 340px"], [style*="width: 320px"], [style*="width: 380px"] {
+    width: 100% !important; max-width: 100% !important;
+  }
+  .content-body [style*="display: flex"][style*="justify-content: space-between"] { flex-wrap: wrap; gap: 10px; }
+}
+
+/* ---------- Phone (<= 640px) ---------- */
+@media (max-width: 640px) {
+  [style*="minmax(3"], [style*="minmax(28"] {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)) !important;
+  }
+  /* Search boxes / inputs with fixed pixel widths fill the row */
+  input[style*="width: 260px"], input[style*="width: 220px"], input[style*="width: 200px"],
+  input[style*="width: 140px"], input[style*="width: 130px"],
+  select[style*="width: "], textarea[style*="width: "] {
+    width: 100% !important; max-width: 100% !important;
+  }
+  /* Label columns in bar rows shrink */
+  span[style*="width: 150px"], span[style*="width: 160px"], span[style*="width: 110px"] {
+    width: 96px !important; font-size: 11px !important;
+  }
+  /* Modals / popovers use the full screen */
+  [style*="position: fixed"][style*="inset: 0"] { padding: 8px !important; }
+  [style*="width: 760px"] { width: 100% !important; height: 94vh !important; border-radius: 14px !important; }
+  /* Kanban + calendar stay usable */
+  [style*="repeat(7, 1fr)"] { gap: 2px !important; font-size: 10px !important; }
+  .app-header .header-center { display: none !important; }
+  .date-selector-wrapper, .header-right { max-width: 100%; }
+  .landing-hero-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .landing-nav-links-desktop { display: none !important; }
+  h1[style*="font-size: 42px"] { font-size: 30px !important; }
+}
+
+/* ---------- Narrow phone (<= 420px) ---------- */
+@media (max-width: 420px) {
+  [style*="repeat(3, 1fr)"], [style*="repeat(4, 1fr)"], [style*="1fr 1fr"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  [style*="repeat(8, 1fr)"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .content-body { padding: 10px 8px; }
+}
