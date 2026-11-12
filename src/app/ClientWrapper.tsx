@@ -1447,9 +1447,9 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                             onClick={() => setShowLoginPassword((v) => !v)}
                             aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
                             title={showLoginPassword ? 'Hide password' : 'Show password'}
-                            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.55)', display: 'flex', alignItems: 'center', padding: '4px' }}
+                            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', color: '#6e6e73', display: 'flex', alignItems: 'center', padding: '4px', zIndex: 1 }}
                           >
-                            {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            {showLoginPassword ? <EyeOff size={18} strokeWidth={2.2} /> : <Eye size={18} strokeWidth={2.2} />}
                           </button>
                         </div>
                       </div>
