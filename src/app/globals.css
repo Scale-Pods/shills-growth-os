@@ -4730,18 +4730,33 @@ select.input option {
 }
 
 @media (max-width: 720px) {
+  /* Bottom sheet on phones so it never overflows the viewport */
   .date-range-popover {
+    position: fixed !important;
+    top: auto !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: 8px !important;
+    width: auto !important;
+    max-width: none !important;
     flex-direction: column !important;
-    max-height: 80vh;
-    overflow-y: auto;
+    max-height: 85dvh;
+    overflow-y: auto !important;
+    z-index: 5000 !important;
+    -webkit-overflow-scrolling: touch;
   }
   .date-range-popover > div:first-child {
     border-right: none !important;
     border-bottom: 1px solid var(--separator);
     width: 100% !important;
-    flex-direction: row;
-    overflow-x: auto;
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 4px !important;
   }
+  .date-range-popover > div:first-child button { white-space: nowrap; }
+  .date-range-popover > div:last-child { display: flex; flex-direction: column; align-items: center; }
+  .date-range-popover > div:last-child > div:last-child { align-self: stretch; }
+  .date-range-popover .rdp-root { --rdp-day-height: 40px; --rdp-day-width: 40px; }
 }
 
 /* ==========================================================================
@@ -4821,4 +4836,22 @@ img, video, canvas, svg { max-width: 100%; }
   }
   [style*="repeat(8, 1fr)"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .content-body { padding: 10px 8px; }
+}
+
+/* ---------- Cross-device safety (modals, toasts, popovers, dvh) ---------- */
+#toast-container { max-width: calc(100vw - 24px); }
+@media (max-width: 640px) {
+  #toast-container { top: 12px !important; right: 12px !important; left: 12px !important; }
+  #toast-container > * { width: 100%; }
+  .workspace-switcher-menu {
+    left: 12px !important; right: 12px !important; width: auto !important;
+    top: 72px !important; max-height: 75dvh !important;
+  }
+  /* Fixed full-screen modals: use dynamic viewport height so mobile browser bars don't clip them */
+  [style*="position: fixed"][style*="inset: 0"] { padding: 8px !important; }
+  [style*="height: 90vh"] { height: 92dvh !important; max-height: 92dvh !important; }
+  .spotlight-overlay { padding-top: 8vh !important; }
+  .spotlight-panel { max-width: 100%; }
+  /* Fixed-position dropdowns must not run off-screen */
+  [role="listbox"][style*="position: fixed"] { max-width: calc(100vw - 16px); }
 }

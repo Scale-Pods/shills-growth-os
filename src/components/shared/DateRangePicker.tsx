@@ -41,6 +41,15 @@ export function DateRangePicker({ value, label, onUpdate, className }: DateRange
   const [tempRange, setTempRange] = React.useState<DateRange | undefined>(value);
   const [tempLabel, setTempLabel] = React.useState<string | undefined>(label ?? 'Last 30 days');
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 720px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   React.useEffect(() => {
     if (open) {
@@ -50,13 +59,19 @@ export function DateRangePicker({ value, label, onUpdate, className }: DateRange
   }, [open, value, label]);
 
   React.useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
-    if (open) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, [open]);
 
   const handlePreset = (preset: Preset) => {
@@ -151,7 +166,7 @@ export function DateRangePicker({ value, label, onUpdate, className }: DateRange
                 setTempRange(range);
                 setTempLabel('Custom Range');
               }}
-              numberOfMonths={2}
+              numberOfMonths={isMobile ? 1 : 2}
               defaultMonth={tempRange?.from}
             />
 

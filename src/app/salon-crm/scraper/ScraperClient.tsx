@@ -83,7 +83,9 @@ export default function ScraperClient({ initialSalons }: { initialSalons: Salon[
       const el = triggerRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      setMenuRect({ top: r.bottom + 6, left: r.left, width: r.width });
+      const w = Math.min(Math.max(r.width, 220), window.innerWidth - 16);
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+      setMenuRect({ top: r.bottom + 6, left, width: w });
     };
     update();
     window.addEventListener('scroll', update, true);
