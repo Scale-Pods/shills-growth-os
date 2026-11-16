@@ -5177,3 +5177,35 @@ img, video, canvas, svg { max-width: 100%; }
     max-height: calc(100dvh - 84px);
   }
 }
+
+/* Insight strips (Executive Board briefing etc.): stack and wrap on phones/tablets */
+@media (max-width: 900px) {
+  .ai-insights-strip { flex-direction: column; align-items: stretch !important; gap: 12px !important; padding: 16px !important; }
+  .insights-scroll-container { flex-direction: column; overflow: visible !important; flex-wrap: nowrap !important; gap: 10px !important; width: 100%; }
+  .insight-pill {
+    white-space: normal !important; flex-shrink: 1 !important; width: 100%;
+    align-items: flex-start !important; border-radius: 14px !important; padding: 10px 12px !important;
+  }
+  .insight-pill .badge { flex-shrink: 0; font-size: 10px; line-height: 1.4; }
+  .insight-text { min-width: 0; line-height: 1.45; }
+}
+
+/* Inline-styled tab bars (display:flex + width:fit-content): never exceed the screen — swipe sideways instead */
+.content-body [style*="width: fit-content"][style*="display: flex"] {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.content-body [style*="width: fit-content"][style*="display: flex"]::-webkit-scrollbar { display: none; }
+.content-body [style*="width: fit-content"][style*="display: flex"] > button { flex-shrink: 0; white-space: nowrap; }
+
+/* Mobile drawer: compact brand + footer so more of the nav is visible */
+@media (max-width: 1024px) {
+  .sidebar.sidebar-v2 .sb-brand { padding: 12px 14px 10px; gap: 6px; }
+  .sidebar.sidebar-v2 .sb-brand-logo { height: 38px; }
+  .sidebar.sidebar-v2 .sb-brand-name { font-size: 14px; }
+  .sidebar.sidebar-v2 .sidebar-footer { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); gap: 8px; }
+  .sidebar.sidebar-v2 .sidebar-footer .scalepods-footer { display: none; }
+  .sidebar.sidebar-v2 .sidebar-footer .theme-switcher { margin: 0; }
+}
