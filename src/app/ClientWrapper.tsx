@@ -39,7 +39,8 @@ import {
   Inbox,
   BarChart3,
   Eye,
-  EyeOff
+  EyeOff,
+  LayoutGrid
 } from 'lucide-react';
 import { DateRangePicker, type DateRange } from '@/components/shared/DateRangePicker';
 import OutreachSequenceModal from './accounts-receivable/OutreachSequenceModal';
@@ -518,6 +519,132 @@ const SALON_CRM_VOICE_SECTIONS: WorkspaceSection[] = [
   },
 ];
 
+// -------------------------------------------------------
+// Sidebar navigation: sectioned list with collapsible groups.
+// -------------------------------------------------------
+type NavIcon = React.ComponentType<{ size?: number; strokeWidth?: number }>;
+
+interface NavLeaf {
+  href: string;
+  label: string;
+  icon: NavIcon;
+  /** Path prefix that also marks this item active (defaults to exact href). */
+  match?: string;
+}
+
+interface NavGroup {
+  label: string;
+  icon: NavIcon;
+  /** Path prefix: group auto-opens while the current route is inside it. */
+  base?: string;
+  children: (NavLeaf | NavGroup)[];
+}
+
+interface NavSection {
+  label: string;
+  entries: (NavLeaf | NavGroup)[];
+}
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    label: 'Overview',
+    entries: [
+      { href: '/master', label: 'Master Dashboard', icon: LayoutGrid },
+      { href: '/dashboard', label: 'Executive Board', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Operations',
+    entries: [
+      { href: '/inventory', label: 'Inventory', icon: Package, match: '/inventory' },
+      { href: '/customer-care', label: 'Customer Care', icon: Bot, match: '/customer-care' },
+    ],
+  },
+  {
+    label: 'Marketing',
+    entries: [{ href: '/marketing', label: 'Content OS', icon: Sparkles, match: '/marketing' }],
+  },
+  {
+    label: 'Sales & Finance',
+    entries: [
+      {
+        label: 'B2B CRM',
+        icon: Users,
+        children: [
+          { href: '/salon-crm/dashboard', label: 'Dashboard', icon: LayoutGrid },
+          { href: '/salon-crm/leads', label: 'Leads', icon: UserCheck },
+          { href: '/salon-crm/scraper', label: 'Lead Finder', icon: MapPin },
+          {
+            label: 'WhatsApp', icon: MessageSquare, base: '/salon-crm/whatsapp',
+            children: [
+              { href: '/salon-crm/whatsapp/dashboard', label: 'Dashboard', icon: LayoutGrid },
+              { href: '/salon-crm/whatsapp/chats', label: 'Chats', icon: MessageSquare },
+              { href: '/salon-crm/whatsapp/leads', label: 'Leads', icon: UserCheck },
+              { href: '/salon-crm/whatsapp/analytics', label: 'Analytics', icon: BarChart3 },
+            ],
+          },
+          {
+            label: 'Email', icon: Mail, base: '/salon-crm/email',
+            children: [
+              { href: '/salon-crm/email/dashboard', label: 'Dashboard', icon: LayoutGrid },
+              { href: '/salon-crm/email/inbox', label: 'Inbox', icon: Inbox },
+              { href: '/salon-crm/email/analytics', label: 'Analytics', icon: BarChart3 },
+            ],
+          },
+          {
+            label: 'Voice', icon: Phone, base: '/salon-crm/voice',
+            children: [
+              { href: '/salon-crm/voice/dashboard', label: 'Dashboard', icon: LayoutGrid },
+              { href: '/salon-crm/voice/logs', label: 'Call Logs', icon: Phone },
+              { href: '/salon-crm/voice/analytics', label: 'Analytics', icon: BarChart3 },
+            ],
+          },
+        ],
+      },
+      {
+        label: 'Receivables',
+        icon: DollarSign,
+        children: [
+          { href: '/accounts-receivable/dashboard', label: 'Dashboard', icon: LayoutGrid },
+          { href: '/accounts-receivable/upload-invoice', label: 'Invoices & Ledger', icon: UploadCloud },
+          {
+            label: 'WhatsApp', icon: MessageSquare, base: '/accounts-receivable/whatsapp',
+            children: [
+              { href: '/accounts-receivable/whatsapp/dashboard', label: 'Dashboard', icon: LayoutGrid },
+              { href: '/accounts-receivable/whatsapp/chats', label: 'Chats', icon: MessageSquare },
+              { href: '/accounts-receivable/whatsapp/leads', label: 'Leads', icon: UserCheck },
+              { href: '/accounts-receivable/whatsapp/analytics', label: 'Analytics', icon: BarChart3 },
+            ],
+          },
+          {
+            label: 'Email', icon: Mail, base: '/accounts-receivable/email',
+            children: [
+              { href: '/accounts-receivable/email/dashboard', label: 'Dashboard', icon: LayoutGrid },
+              { href: '/accounts-receivable/email/sent', label: 'Sent', icon: Send },
+              { href: '/accounts-receivable/email/received', label: 'Received', icon: Inbox },
+              { href: '/accounts-receivable/email/analytics', label: 'Analytics', icon: BarChart3 },
+            ],
+          },
+          {
+            label: 'Voice', icon: Phone, base: '/accounts-receivable/voice',
+            children: [
+              { href: '/accounts-receivable/voice/dashboard', label: 'Dashboard', icon: LayoutGrid },
+              { href: '/accounts-receivable/voice/logs', label: 'Call Logs', icon: Phone },
+              { href: '/accounts-receivable/voice/analytics', label: 'Analytics', icon: BarChart3 },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+];
+
+function isNavActive(pathname: string | null, item: NavLeaf): boolean {
+  if (!pathname) return false;
+  if (pathname === item.href) return true;
+  return !!item.match && (pathname === item.match || pathname.startsWith(item.match + '/'));
+}
+
 /** Returns the workspace for a path, with channel sub-navs swapped in. */
 function resolveWorkspace(pathname: string | null): Workspace {
   const base = workspaceForPath(pathname);
@@ -592,7 +719,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
   const [hasMounted, setHasMounted] = useState(false);
   const [sessionExpiredNotice, setSessionExpiredNotice] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
-  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [outreachModalOpen, setOutreachModalOpen] = useState(false);
   const activeWorkspace = resolveWorkspace(pathname);
   // Outreach Sequence Generator — hidden gear icon, only in Receivables Recovery,
@@ -602,9 +729,9 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
     (pathname?.startsWith('/accounts-receivable') ?? false) &&
     currentUser?.email?.toLowerCase() === OUTREACH_SETTINGS_ALLOWED_EMAIL;
 
-  // Close the workspace dropdown whenever the route changes.
+  // Close the mobile drawer whenever the route changes.
   useEffect(() => {
-    setWorkspaceMenuOpen(false);
+    setMobileSidebarOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -854,6 +981,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
       if (e.key === 'Escape') {
         setSpotlightOpen(false);
         setInspectorOpen(false);
+        setMobileSidebarOpen(false);
       }
     };
     window.addEventListener('keydown', handleGlobalKeys);
@@ -926,6 +1054,52 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+
+  const renderNavGroup = (group: NavGroup, depth: number, key: string): React.ReactNode => {
+    const GroupIcon = group.icon;
+    const inside = !!group.base && !!pathname && (pathname === group.base || pathname.startsWith(group.base + '/'));
+    const defaultOpen = depth === 0 ? true : inside;
+    const open = openGroups[key] ?? defaultOpen;
+    return (
+      <div key={key} className="sb-group">
+        <button
+          type="button"
+          className={`sb-item sb-group-btn${depth > 0 ? ' sb-sub' : ''}${depth > 0 && inside ? ' in-path' : ''}`}
+          aria-expanded={open}
+          onClick={() => setOpenGroups((prev) => ({ ...prev, [key]: !open }))}
+        >
+          <GroupIcon size={depth > 0 ? 17 : 18} strokeWidth={1.8} />
+          <span>{group.label}</span>
+          <ChevronDown size={16} className={`sb-chev ${open ? 'open' : ''}`} />
+        </button>
+        {open && (
+          <div className={`sb-children${depth > 0 ? ' sb-children-deep' : ''}`}>
+            {group.children.map((child) =>
+              'children' in child
+                ? renderNavGroup(child, depth + 1, `${key}/${child.label}`)
+                : renderNavLink(child, true, depth > 0)
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderNavLink = (item: NavLeaf, sub: boolean, deep = false) => {
+    const ItemIcon = item.icon;
+    const active = isNavActive(pathname, item);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={`sb-item${sub ? ' sb-sub' : ''}${deep ? ' sb-deep' : ''}${active ? ' active' : ''}`}
+        aria-current={active ? 'page' : undefined}
+      >
+        <ItemIcon size={sub ? 16 : 18} strokeWidth={1.8} />
+        <span>{item.label}</span>
+      </Link>
+    );
+  };
 
   return (
     <AppContext.Provider
@@ -1017,120 +1191,31 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
               <div className="mobile-sidebar-overlay" onClick={() => setMobileSidebarOpen(false)}></div>
             )}
             
-            {/* macOS Frosted Sidebar Rail */}
-            <aside className={`sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
-              <div
-                className="sidebar-header workspace-switcher-wrapper"
-                style={{
-                  padding: '14px 12px',
-                  boxSizing: 'border-box',
-                  borderBottom: '1px solid var(--separator)',
-                }}
-              >
-                <button
-                  onClick={() => setWorkspaceMenuOpen((prev) => !prev)}
-                  title={`${activeWorkspace.name} — click to switch workspace`}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '8px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--glass-border)',
-                    background: workspaceMenuOpen ? 'var(--fill-tertiary)' : 'var(--fill-quaternary)',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--blue)', color: '#fff' }}>
-                    <activeWorkspace.icon size={15} />
-                  </div>
-                  <div className="sidebar-logo-expanded" style={{ flexDirection: 'column', lineHeight: 1.2, flex: 1, minWidth: 0 }}>
-                    <span style={{ fontWeight: '800', fontSize: '13px', color: 'var(--label-primary)', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeWorkspace.name}</span>
-                    <span style={{ fontSize: '9.5px', color: 'var(--label-tertiary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeWorkspace.tagline}</span>
-                  </div>
-                  <ChevronDown size={14} className="sidebar-logo-expanded" style={{ color: 'var(--label-tertiary)', flexShrink: 0, transform: workspaceMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease' }} />
+            {/* Sidebar */}
+            <aside className={`sidebar sidebar-v2 ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
+              <div className="sb-brand">
+                <img src="/icon.png" alt="Shills Professional" className="sb-brand-logo" />
+                <div className="sb-brand-text">
+                  <span className="sb-brand-name">Growth OS</span>
+                  <span className="sb-brand-sub">
+                    <span className="sb-brand-powered">Powered by</span>
+                    <img src="/scalepods-logo.avif" alt="ScalePods" className="sp-logo sp-theme" />
+                  </span>
+                </div>
+                <button type="button" className="sb-close-btn" aria-label="Close menu" onClick={() => setMobileSidebarOpen(false)}>
+                  <X size={20} />
                 </button>
               </div>
 
-              {workspaceMenuOpen && (
-                <>
-                  <div onClick={() => setWorkspaceMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1500 }} />
-                  <div
-                    className="workspace-switcher-menu"
-                    style={{
-                      position: 'fixed',
-                      top: '112px',
-                      left: '32px',
-                      width: '260px',
-                      zIndex: 1501,
-                      background: 'var(--bg-layer1)',
-                      border: '1px solid var(--glass-border)',
-                      borderRadius: '14px',
-                      boxShadow: '0 16px 40px rgba(0,0,0,0.45)',
-                      padding: '6px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '2px',
-                      maxHeight: '70vh',
-                      overflowY: 'auto',
-                    }}
-                  >
-                    {WORKSPACES.map((ws) => {
-                      const WsIcon = ws.icon;
-                      const isActive = ws.id === activeWorkspace.id;
-                      return (
-                        <button
-                          key={ws.id}
-                          onClick={() => {
-                            setWorkspaceMenuOpen(false);
-                            router.push(ws.homePath);
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            padding: '9px 10px',
-                            borderRadius: '9px',
-                            border: 'none',
-                            background: isActive ? 'rgba(0, 122, 255, 0.12)' : 'transparent',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            width: '100%',
-                          }}
-                        >
-                          <div style={{ width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isActive ? 'var(--blue)' : 'var(--fill-quaternary)', color: isActive ? '#fff' : 'var(--label-secondary)' }}>
-                            <WsIcon size={13} />
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--label-primary)' }}>{ws.name}</div>
-                            <div style={{ fontSize: '10.5px', color: 'var(--label-tertiary)' }}>{ws.tagline}</div>
-                          </div>
-                          {isActive && <Check size={14} style={{ color: 'var(--blue)', flexShrink: 0 }} />}
-                        </button>
-                      );
+              <nav className="sidebar-nav sb-nav">
+                {NAV_SECTIONS.map((section) => (
+                  <div key={section.label} className="sb-section">
+                    <div className="sb-section-label">{section.label}</div>
+                    {section.entries.map((entry) => {
+                      if ('children' in entry) return renderNavGroup(entry, 0, entry.label);
+                      return renderNavLink(entry, false);
                     })}
                   </div>
-                </>
-              )}
-
-              <nav className="sidebar-nav">
-                {activeWorkspace.sections.map((section) => (
-                  <React.Fragment key={section.label}>
-                    <div className="nav-section-label">{section.label}</div>
-                    {section.items.map((item) => {
-                      const ItemIcon = item.icon;
-                      return (
-                        <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
-                          <div className={`nav-item ${pathname === item.href ? 'active' : ''}`}>
-                            <ItemIcon size={16} />
-                            <span>{item.label}</span>
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </React.Fragment>
                 ))}
               </nav>
 
@@ -1192,7 +1277,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                     letterSpacing: '0.05em',
                   }}
                 >
-                  Powered by <span style={{ fontWeight: '700', color: 'var(--blue)' }}>ScalePods</span>
+                  <span className="sp-powered">Powered by <img src="/scalepods-logo.avif" alt="ScalePods" className="sp-logo sp-theme" /></span>
                 </div>
               </div>
             </aside>
@@ -1204,15 +1289,12 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                   <button
                     className="menu-toggle-btn"
                     onClick={() => setMobileSidebarOpen((prev) => !prev)}
-                    title="Toggle Navigation"
-                    style={{ background: 'transparent', border: 'none', color: 'var(--label-primary)', cursor: 'pointer' }}
+                    title={mobileSidebarOpen ? 'Close menu' : 'Open menu'}
+                    aria-label={mobileSidebarOpen ? 'Close menu' : 'Open menu'}
+                    aria-expanded={mobileSidebarOpen}
                   >
-                    <Menu size={18} />
+                    {mobileSidebarOpen ? <X size={20} /> : <Menu size={20} />}
                   </button>
-                  <div className="navigation-controls" style={{ display: 'flex', gap: '6px' }}>
-                    <button className="nav-ctrl-btn" onClick={goBack} title="Back" style={{ border: 'none', background: 'transparent', color: 'var(--label-secondary)' }}><ChevronLeft size={16} /></button>
-                    <button className="nav-ctrl-btn" onClick={goForward} title="Forward" style={{ border: 'none', background: 'transparent', color: 'var(--label-secondary)' }}><ChevronRight size={16} /></button>
-                  </div>
                   <div className="breadcrumb" style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     <span className="breadcrumb-parent">{activeWorkspace.name}</span>
                     <span className="breadcrumb-separator">/</span>
@@ -1273,7 +1355,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
           </>
         ) : (
           /* Premium B2B SaaS Redesigned Landing Page */
-          <div className="landing-container" style={{ width: '100vw', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0a0a0c', overflowY: 'auto', position: 'relative' }}>
+          <div className="landing-container" style={{ width: '100vw', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0a0a0c', overflowY: 'auto', overflowX: 'hidden', position: 'relative' }}>
             {/* Curated Aesthetic Glowing Orbs */}
             <div className="landing-glow-1" style={{ position: 'absolute', top: '10%', left: '5%', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0, 122, 255, 0.15) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none', zIndex: 0 }}></div>
             <div className="landing-glow-2" style={{ position: 'absolute', bottom: '20%', right: '5%', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(175, 82, 222, 0.15) 0%, transparent 70%)', filter: 'blur(80px)', pointerEvents: 'none', zIndex: 0 }}></div>
@@ -1281,13 +1363,13 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
 
             {/* Navigation Header */}
             <header className="landing-navbar" style={{ position: 'relative', top: 'auto', left: 0, transform: 'none', width: '100%', maxWidth: 'none', padding: 0, borderBottom: '1px solid rgba(255, 255, 255, 0.06)', background: 'rgba(10, 10, 12, 0.8)', backdropFilter: 'blur(20px)', zIndex: 10 }}>
-              <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px' }}>
+              <div className="landing-nav-inner" style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px' }}>
                 <div className="landing-nav-logo" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <img src="/icon.png" alt="Shills OS Logo" style={{ width: '64px', height: '64px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }} />
+                  <img className="landing-nav-img" src="/icon.png" alt="Shills OS Logo" style={{ width: '64px', height: '64px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }} />
                   <div>
                     <span className="landing-nav-logo-txt" style={{ fontSize: '20px', fontWeight: '800', letterSpacing: '0.05em', color: '#fff', display: 'block', lineHeight: '1.1' }}>SHILLS GROWTH OS</span>
-                    <span style={{ fontSize: '10px', color: 'var(--label-secondary)', fontWeight: '600', display: 'block', marginTop: '4px' }}>
-                      Powered by <span style={{ color: 'var(--blue)', fontWeight: '700' }}>ScalePods</span>
+                    <span className="landing-nav-sub" style={{ fontSize: '10px', color: 'var(--label-secondary)', fontWeight: '600', display: 'block', marginTop: '4px' }}>
+                      <span className="sp-powered">Powered by <img src="/scalepods-logo.avif" alt="ScalePods" className="sp-logo" /></span>
                     </span>
                   </div>
                 </div>
@@ -1298,6 +1380,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                   </div>
                   <a
                     href="#login"
+                    className="landing-signin-btn"
                     style={{ cursor: 'pointer', background: 'linear-gradient(135deg, var(--blue), var(--purple))', padding: '8px 20px', borderRadius: '20px', border: 'none', color: '#fff', fontSize: '13px', fontWeight: '600', transition: 'all 200ms ease', boxShadow: '0 4px 12px rgba(0, 122, 255, 0.2)', textDecoration: 'none' }}
                   >
                     Sign In
@@ -1307,12 +1390,12 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
             </header>
 
             {/* Split Grid Body */}
-            <main style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '60px 24px', position: 'relative', zIndex: 1, flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '60px' }}>
+            <main className="landing-main" style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '60px 24px', position: 'relative', zIndex: 1, flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '60px' }}>
               
               <div className="landing-hero-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '60px', alignItems: 'center', flexWrap: 'wrap' }}>
                 
                 {/* Left Side Info Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div className="landing-hero-info" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(0, 122, 255, 0.1)', border: '1px solid rgba(0, 122, 255, 0.2)', padding: '6px 16px', borderRadius: '30px', width: 'fit-content' }}>
                     <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--blue)', display: 'inline-block', animation: 'pulse 1.5s infinite' }}></span>
                     <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--blue)' }}>COMMAND CENTER v1.2 ACTIVE • Powered by ScalePods</span>
@@ -1367,8 +1450,9 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                 </div>
 
                 {/* Right Side Glassmorphic Login Console */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="landing-hero-login" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                   <div 
+                    className="landing-login-card"
                     style={{ 
                       width: '100%', 
                       maxWidth: '400px', 
@@ -1381,14 +1465,14 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                     }}
                   >
                     {/* Header profile */}
-                    <div id="login" style={{ textAlign: 'center', marginBottom: '24px', scrollMarginTop: '90px' }}>
+                    <div id="login" className="landing-login-head" style={{ textAlign: 'center', marginBottom: '24px', scrollMarginTop: '90px' }}>
                       <div style={{ width: '120px', height: '120px', borderRadius: '28px', background: 'rgba(255,255,255,0.03)', border: '1.5px solid rgba(255, 255, 255, 0.1)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
                         <img src="/icon.png" alt="Shills Profile Logo" style={{ width: '96px', height: '96px', objectFit: 'contain' }} />
                       </div>
                       <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: 0 }}>Sign In</h2>
                       <p style={{ fontSize: '12.5px', color: 'var(--label-secondary)', marginTop: '6px', lineHeight: '1.4' }}>
                         Enter your Shills Growth OS credentials. <br />
-                        <span style={{ fontSize: '11px', color: 'var(--blue)', fontWeight: '700', display: 'block', marginTop: '4px' }}>Powered by ScalePods</span>
+                        <span className="sp-powered" style={{ fontSize: '11px', fontWeight: '600', display: 'flex', justifyContent: 'center', marginTop: '8px' }}>Powered by <img src="/scalepods-logo.avif" alt="ScalePods" className="sp-logo" /></span>
                       </p>
                     </div>
 
@@ -1420,6 +1504,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                       <div>
                         <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--label-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</label>
                         <input
+                          className="landing-input"
                           type="email"
                           autoComplete="username"
                           placeholder="you@company.com"
@@ -1434,6 +1519,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                         <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--label-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
                         <div style={{ position: 'relative' }}>
                           <input
+                            className="landing-input"
                             type={showLoginPassword ? 'text' : 'password'}
                             autoComplete="current-password"
                             placeholder="••••••••"
@@ -1483,6 +1569,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                             We&apos;ll email you a link to set a new password.
                           </span>
                           <input
+                            className="landing-input"
                             type="email"
                             placeholder="Account email"
                             value={forgotEmail}
@@ -1517,7 +1604,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                     </form>
 
                     <div style={{ textAlign: 'center', fontSize: '10.5px', color: 'var(--label-tertiary)', marginTop: '16px' }}>
-                      Secured Gateway • Powered by <span style={{ color: 'var(--blue)', fontWeight: '600' }}>ScalePods</span>
+                      <span className="sp-powered" style={{ justifyContent: 'center' }}>Secured Gateway • Powered by <img src="/scalepods-logo.avif" alt="ScalePods" className="sp-logo" /></span>
                     </div>
                   </div>
                 </div>
@@ -1577,7 +1664,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
             <footer style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)', padding: '30px 24px', marginTop: 'auto', background: '#070709' }}>
               <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', fontSize: '12.5px', color: 'var(--label-tertiary)' }}>
                 <span>© 2026 Shills Beauty Professional. All Rights Reserved.</span>
-                <span>Powered by <span style={{ fontWeight: '700', color: 'var(--blue)' }}>ScalePods</span> Growth Framework</span>
+                <span className="sp-powered">Powered by <img src="/scalepods-logo.avif" alt="ScalePods" className="sp-logo" /> Growth Framework</span>
               </div>
             </footer>
           </div>

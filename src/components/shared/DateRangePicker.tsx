@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { format, subDays, subMonths, subYears, startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
 import { DayPicker, type DateRange } from 'react-day-picker';
 import 'react-day-picker/style.css';
@@ -41,6 +42,7 @@ export function DateRangePicker({ value, label, onUpdate, className }: DateRange
   const [tempRange, setTempRange] = React.useState<DateRange | undefined>(value);
   const [tempLabel, setTempLabel] = React.useState<string | undefined>(label ?? 'Last 30 days');
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const popoverRef = React.useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = React.useState(false);
 
   React.useEffect(() => {
@@ -60,9 +62,9 @@ export function DateRangePicker({ value, label, onUpdate, className }: DateRange
 
   React.useEffect(() => {
     function handleClickOutside(e: MouseEvent | TouchEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const t = e.target as Node;
+      if (containerRef.current?.contains(t) || popoverRef.current?.contains(t)) return;
+      setOpen(false);
     }
     if (open) {
       document.addEventListener('mousedown', handleClickOutside);
@@ -97,10 +99,25 @@ export function DateRangePicker({ value, label, onUpdate, className }: DateRange
       : format(value.from, 'LLL dd, y')
     : label ?? 'All Time';
 
+  // On phones the header's backdrop-filter traps `position: fixed` children,
+  // so the sheet is rendered on <body> to escape it.
+  const renderPopover = (node: React.ReactElement) =>
+    isMobile && typeof document !== 'undefined'
+      ? createPortal(
+          <>
+            <div className="drp-scrim" />
+            {node}
+          </>,
+          document.body
+        )
+      : node;
+
   return (
     <div ref={containerRef} className={className} style={{ position: 'relative' }}>
       <button
         type="button"
+        className="drp-btn"
+        aria-label="Select date range"
         onClick={() => setOpen((v) => !v)}
         style={{
           display: 'flex',
@@ -118,12 +135,13 @@ export function DateRangePicker({ value, label, onUpdate, className }: DateRange
         }}
       >
         <CalendarIcon size={14} style={{ color: 'var(--blue)', flexShrink: 0 }} />
-        <span>{displayText}</span>
+        <span className="drp-text">{displayText}</span>
         <ChevronDown size={13} style={{ color: 'var(--label-tertiary)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease' }} />
       </button>
 
-      {open && (
+      {open && renderPopover(
         <div
+          ref={popoverRef}
           className="liquid-card date-range-popover"
           style={{
             position: 'absolute',
