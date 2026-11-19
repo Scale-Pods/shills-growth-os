@@ -5209,3 +5209,22 @@ img, video, canvas, svg { max-width: 100%; }
   .sidebar.sidebar-v2 .sidebar-footer .scalepods-footer { display: none; }
   .sidebar.sidebar-v2 .sidebar-footer .theme-switcher { margin: 0; }
 }
+
+/* ==========================================================================
+   Opaque header + date picker (all screen sizes)
+   ========================================================================== */
+.app-header {
+  background: var(--bg-layer1) !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  position: relative; z-index: 50;
+}
+.date-range-popover {
+  background: var(--bg-layer1) !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  border: 1px solid var(--separator);
+  z-index: 5000 !important;
+}
+.date-range-popover:hover { transform: none !important; }
+@media (max-width: 768px) {
+  .app-header { box-shadow: 0 1px 0 var(--separator); }
+}
