@@ -5228,3 +5228,11 @@ img, video, canvas, svg { max-width: 100%; }
 @media (max-width: 768px) {
   .app-header { box-shadow: 0 1px 0 var(--separator); }
 }
+
+/* Mobile browsers: 100vh includes the hidden URL/tool bars and cuts the bottom of the app.
+   Use the dynamic viewport height so the layout fits the visible screen. */
+@supports (height: 100dvh) {
+  body, .app-container, .inspector-overlay, .spotlight-overlay, .inspector-panel, .modal-overlay { height: 100dvh; }
+  .landing-container { height: auto; min-height: 100dvh; }
+}
+.content-body { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
